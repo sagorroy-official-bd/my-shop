@@ -54,7 +54,7 @@ export default function Home() {
             <h1 className="font-serif text-[44px] md:text-[56px] leading-[0.9] mt-5 tracking-[-0.03em] font-bold">ঐতিহ্যের<br/>সাথে<br/>আধুনিকতা</h1>
             <p className="text-xs text-gray-500 mt-5 max-w-[360px] leading-relaxed">গাউছিয়া কালেকশন - যেখানে প্রতিটি শাড়ি, বোরকা ও লেহেঙ্গা বাছাই করা হয় আপনার বিশেষ মুহূর্তের জন্য।</p>
             <div className="flex items-center gap-4 mt-7">
-              <button onClick={()=>document.getElementById('products')?.scrollIntoView({behavior:'smooth'})} className="bg-[#1a1a1a] text-white rounded-full px-7 py-3 text-xs font-bold hover:bg-black transition">কালেকশন দেখুন</button>
+              <button onClick={()=>document.getElementById('products')?.scrollIntoView({behavior:'smooth'})} className="bg-[#1a1a1a] text-white rounded-full px-7 py-3 text-xs font-bold">কালেকশন দেখুন</button>
               <div className="flex items-center gap-1.5 text-[11px]"><span>★★★★★</span><span className="text-gray-500">4.9/5 (2.1k reviews)</span></div>
             </div>
             <div className="flex gap-5 mt-10 text-[10px] text-gray-500 border-t border-[#eee6db] pt-4 max-w-sm">
@@ -65,43 +65,56 @@ export default function Home() {
             <div className="bg-[#ff3d12] rounded-[28px] overflow-hidden aspect-[4/3] md:aspect-[1/1] relative shadow-[0_20px_50px_rgba(255,61,18,0.2)]">
               <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=900&h=1100&fit=crop" className="w-full h-full object-cover object-top" alt="hero" />
               <div className="absolute bottom-5 left-5 right-5 bg-white/95 backdrop-blur-md rounded-[18px] p-4 flex justify-between items-center shadow-lg">
-                <div><div className="text-[10px] text-gray-400 tracking-wide">Starting from</div><div className="font-bold text-[15px]">1,250৳</div></div>
+                <div><div className="text-[10px] text-gray-400">Starting from</div><div className="font-bold text-[15px]">1,250৳</div></div>
                 <div className="text-right"><div className="text-[10px] text-gray-400">New Eid Collection</div><div className="text-xs font-bold">50+ Designs</div></div>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="mt-12">
-          <div className="flex gap-2.5 overflow-auto pb-3 scrollbar-hide">
-            {CATEGORIES.map(c=>{
-              const isActive = activeCat===c.id;
-              return (
-                <button key={c.id} onClick={()=>setActiveCat(c.id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs border-2 whitespace-nowrap font-medium transition-all ${isActive ? c.activeBg + ' border-transparent shadow-md scale-[1.02]' : c.bg + ' hover:scale-[1.02] hover:shadow-sm'}`}>
-                  <span className="text-[14px]">{c.icon}</span>{c.id}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+        <div className="mt-12"><div className="flex gap-2.5 overflow-auto pb-3">{CATEGORIES.map(c=>{ const isActive = activeCat===c.id; return (<button key={c.id} onClick={()=>setActiveCat(c.id)} className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs border-2 whitespace-nowrap font-medium transition-all ${isActive ? c.activeBg + ' border-transparent shadow-md' : c.bg}`}>{c.icon} {c.id}</button>)})}</div></div>
       </section>
 
-      <main id="products" className="max-w-[1300px] mx-auto px-4 md:px-8 pb-16">
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-5 md:gap-6">
+      <main id="products" className="max-w-[1300px] mx-auto px-4 md:px-8 pb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
           {filtered.map(p=>(
-            <div key={p.id} className="group bg-white rounded-[22px] overflow-hidden border border-[#f3ebe1] hover:border-[#e8ddd0] hover:shadow-[0_15px_35px_rgba(0,0,0,0.07)] transition-all duration-300">
-              <div className="relative overflow-hidden aspect-[3/4]"><img src={p.img} className="w-full h-full object-cover group-hover:scale-[1.05] transition duration-700" alt={p.bn} /><div className="absolute top-3 left-3 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold">IN STOCK</div></div>
-              <div className="p-4"><div className="text-[13px] font-medium min-h-[36px] leading-snug">{p.bn}</div><div className="flex justify-between items-end mt-3"><div><span className="font-bold text-[15px]">{p.price}৳</span><span className="text-[11px] line-through text-gray-400 ml-2">{p.old}৳</span></div><button onClick={()=>addToCart(p)} className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white flex items-center justify-center hover:bg-black transition">+</button></div></div>
+            <div key={p.id} className="bg-white rounded-[20px] overflow-hidden border border-[#f3ebe1] hover:shadow-lg transition">
+              <img src={p.img} className="h-[340px] w-full object-cover" alt={p.bn} />
+              <div className="p-4"><div className="text-[13px] font-medium">{p.bn}</div><div className="flex justify-between items-end mt-3"><div><span className="font-bold">{p.price}৳</span><span className="text-[11px] line-through text-gray-400 ml-1">{p.old}৳</span><div className="text-[10px] text-[#6a9a6a] mt-1">✓ In Stock • Free Delivery</div></div><button onClick={()=>addToCart(p)} className="w-9 h-9 rounded-full bg-[#1a1a1a] text-white">+</button></div></div>
             </div>
           ))}
         </div>
+
+        {/* FIXED BOTTOM - COLORFUL PRESTIGE */}
+        <div className="mt-16">
+          <div className="text-center mb-6"><div className="text-[10px] tracking-[0.4em] text-[#b8a898]">GAUSIA PROMISE</div><h3 className="font-serif text-2xl mt-2">আপনার আস্থাই আমাদের শক্তি</h3></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white rounded-[18px] border border-[#f3ebe1] p-6 text-center shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+              <div className="w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-amber-50 to-orange-100 border-2 border-amber-200 flex items-center justify-center text-2xl">💎</div>
+              <div className="font-bold text-[13px] mt-3">১০০% অরিজিনাল</div>
+              <div className="text-[11px] text-gray-500 mt-1">গ্যারান্টি সহ</div>
+            </div>
+            <div className="bg-white rounded-[18px] border border-[#f3ebe1] p-6 text-center shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+              <div className="w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-blue-50 to-cyan-100 border-2 border-blue-200 flex items-center justify-center text-2xl">🚚</div>
+              <div className="font-bold text-[13px] mt-3">ঢাকায় ফ্রি ডেলিভারি</div>
+              <div className="text-[11px] text-gray-500 mt-1">Inside Dhaka</div>
+            </div>
+            <div className="bg-white rounded-[18px] border border-[#f3ebe1] p-6 text-center shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+              <div className="w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-green-50 to-emerald-100 border-2 border-green-200 flex items-center justify-center text-2xl">💵</div>
+              <div className="font-bold text-[13px] mt-3">Cash on Delivery</div>
+              <div className="text-[11px] text-gray-500 mt-1">হাতে পেয়ে টাকা</div>
+            </div>
+            <div className="bg-white rounded-[18px] border border-[#f3ebe1] p-6 text-center shadow-sm hover:shadow-md hover:-translate-y-1 transition-all">
+              <div className="w-14 h-14 mx-auto rounded-full bg-gradient-to-br from-purple-50 to-pink-100 border-2 border-purple-200 flex items-center justify-center text-2xl">↩️</div>
+              <div className="font-bold text-[13px] mt-3">৩ দিনে রিটার্ন</div>
+              <div className="text-[11px] text-gray-500 mt-1">সহজ রিটার্ন</div>
+            </div>
+          </div>
+        </div>
       </main>
 
-      <footer className="bg-[#1a1a1a] text-white"><div className="max-w-[1300px] mx-auto px-4 md:px-8 py-8 flex justify-between"><div className="tracking-[0.2em] font-black text-sm">GAUSIA COLLECTION</div><div className="text-sm">WhatsApp: {WHATSAPP_NUMBER}</div></div></footer>
+      <footer className="bg-[#1a1a1a] text-white"><div className="max-w-[1300px] mx-auto px-4 md:px-8 py-10 flex flex-col md:flex-row justify-between gap-4"><div><div className="tracking-[0.25em] font-black text-sm">GAUSIA COLLECTION</div><div className="text-xs text-gray-400 mt-2 max-w-sm">বাংলাদেশের নারীদের জন্য ট্রাস্টেড ফ্যাশন ব্র্যান্ড। ঈদ, বিয়ে ও পার্টির জন্য সেরা কালেকশন।</div></div><div className="text-sm"><div className="text-[10px] tracking-[0.3em] text-gray-500">CONTACT</div><div className="mt-2">WhatsApp: {WHATSAPP_NUMBER}</div></div></div></footer>
 
-      {showCart && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex justify-end"><div className="bg-[#fdfbf7] w-full max-w-sm p-6 flex flex-col"><div className="flex justify-between mb-6"><h2 className="font-bold">কার্ট</h2><button onClick={()=>setShowCart(false)}>✕</button></div><div className="flex-1 overflow-auto">{cart.length===0 ? <p className="text-sm text-gray-500">কার্ট খালি</p> : cart.map((p,i)=><div key={i} className="flex justify-between py-3 border-b text-sm"><span>{p.bn}</span><span className="font-bold">{p.price}৳</span></div>)}</div>{cart.length>0 && <button onClick={orderOnWhatsApp} className="bg-[#1a1a1a] text-white rounded-full py-3 mt-6 font-bold">WhatsApp এ অর্ডার করুন</button>}</div></div>
-      )}
+      {showCart && (<div className="fixed inset-0 bg-black/40 z-50 flex justify-end"><div className="bg-[#fdfbf7] w-full max-w-sm p-6 flex flex-col"><div className="flex justify-between mb-6"><h2 className="font-bold">কার্ট</h2><button onClick={()=>setShowCart(false)}>✕</button></div><div className="flex-1 overflow-auto">{cart.length===0 ? <p className="text-sm text-gray-500">কার্ট খালি</p> : cart.map((p,i)=><div key={i} className="flex justify-between py-3 border-b text-sm"><span>{p.bn}</span><span className="font-bold">{p.price}৳</span></div>)}</div>{cart.length>0 && <button onClick={orderOnWhatsApp} className="bg-[#1a1a1a] text-white rounded-full py-3 mt-6 font-bold">WhatsApp এ অর্ডার করুন</button>}</div></div>)}
     </div>
   );
 }
