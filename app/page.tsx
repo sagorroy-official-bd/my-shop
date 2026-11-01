@@ -34,30 +34,26 @@ export default function Home() {
     en: { top: "🚚 Free Delivery in 24H in Dhaka | Cash on Delivery", search: "Search Saree, Borka, Lehenga...", cust: "20,000+ Happy Customers", t1: "Tradition", t2: "Meets", t3: "Modernity", desc: "Gausia Collection - Every Saree, Borka & Lehenga is selected for your special moment.", btn: "View Collection", cart: "Cart", added: "Added to cart!" }
   }[lang];
 
-  // + বাটন এখন 100% কাজ করবে
-  const addToCart = (product: any) => {
-    setCart(prev => [...prev, product]);
-    setToast(lang==='bn' ? `${product.bn} - ${L.added}` : `${product.en} - ${L.added}`);
+  const addToCart = (p: any) => {
+    setCart(prev => [...prev, p]);
+    setToast(`${lang==='bn'?p.bn:p.en} - ${L.added}`);
     setTimeout(()=>setToast(null), 2000);
   };
-
-  useEffect(()=>{ if(toast) { const t=setTimeout(()=>setToast(null), 2500); return ()=>clearTimeout(t); } },[toast]);
 
   const filtered = activeCat==="সব" ? PRODUCTS : PRODUCTS.filter(p=>p.cat===activeCat);
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] text-[#1a1a1a]">
       <div className="bg-[#1a1a1a] text-white text-[11px] text-center py-2.5">{L.top}</div>
-      
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-[1300px] mx-auto px-4 md:px-8 h-[68px] flex items-center justify-between gap-3">
           <div className="flex items-center gap-2"><div className="w-8 h-8 bg-black text-white flex items-center justify-center font-black">G</div><div className="leading-none"><div className="font-black tracking-[0.2em] text-[14px]">GAUSIA</div><div className="text-[9px] tracking-[0.25em] text-gray-500">COLLECTION</div></div></div>
           <div className="hidden md:flex flex-1 max-w-[380px] mx-6"><div className="w-full bg-[#f8f3ec] rounded-full px-5 py-2.5 flex items-center gap-2"><input placeholder={L.search} className="bg-transparent text-[12px] w-full focus:outline-none" /><span>⌕</span></div></div>
           <div className="flex items-center gap-2">
             <button onClick={()=>setLang(lang==='bn'?'en':'bn')} className="border border-black bg-white text-black rounded-full px-3.5 py-1.5 text-[11px] font-black hover:bg-black hover:text-white transition-all">{lang==='bn' ? 'EN' : 'BN'}</button>
-            <button onClick={()=>window.location.href='/admin'} className="hidden md:block text-[11px] font-bold bg-[#f8f3ec] hover:bg-black hover:text-white rounded-full px-3.5 py-1.5 transition-all">Admin</button>
-            <button onClick={()=>window.open(`https://wa.me/${WHATSAPP_NUMBER}`,'_blank')} className="hidden md:flex items-center gap-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-full px-4 py-1.5 text-[11px] font-bold transition-all">💬 Chat</button>
-            <button onClick={()=>setShowCart(true)} className="bg-black text-white rounded-full px-4 py-2 text-xs font-bold animate-pulse">{L.cart} ({cart.length})</button>
+            <button onClick={()=>window.location.href='/admin'} className="hidden md:block text-[11px] font-bold bg-[#f8f3ec] hover:bg-black hover:text-white rounded-full px-3.5 py-1.5">Admin</button>
+            <button onClick={()=>window.open(`https://wa.me/${WHATSAPP_NUMBER}`,'_blank')} className="hidden md:flex items-center gap-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white rounded-full px-4 py-1.5 text-[11px] font-bold">💬 Chat</button>
+            <button onClick={()=>setShowCart(true)} className="bg-black text-white rounded-full px-4 py-2 text-xs font-bold">{L.cart} ({cart.length})</button>
           </div>
         </div>
       </header>
@@ -73,42 +69,45 @@ export default function Home() {
       <main id="products" className="max-w-[1300px] mx-auto px-4 md:px-8 pb-16">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-5">
           {filtered.map(p=>(
-            <div key={p.id} className="bg-white rounded-[20px] overflow-hidden border border-[#f3ebe1] hover:shadow-lg transition-all group">
+            <div key={p.id} className="bg-white rounded-[20px] overflow-hidden border hover:shadow-lg transition-all group">
               <div className="overflow-hidden"><img src={p.img} className="h-[320px] w-full object-cover group-hover:scale-105 transition-transform duration-500" alt={p.bn} /></div>
-              <div className="p-4">
-                <div className="text-[13px] font-medium">{lang==='bn'?p.bn:p.en}</div>
-                <div className="flex justify-between items-center mt-3">
-                  <div className="font-black text-[15px]">{p.price}৳</div>
-                  {/* + BUTTON FIXED - NOW WORKING */}
-                  <button 
-                    onClick={()=>addToCart(p)} 
-                    className="w-9 h-9 rounded-full bg-black text-white text-[18px] font-bold flex items-center justify-center hover:bg-[#ff3d12] active:scale-90 transition-all shadow-md cursor-pointer"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+              <div className="p-4"><div className="text-[13px] font-medium">{lang==='bn'?p.bn:p.en}</div><div className="flex justify-between items-center mt-3"><div className="font-black">{p.price}৳</div><button onClick={()=>addToCart(p)} className="w-9 h-9 rounded-full bg-black text-white text-[18px] font-bold flex items-center justify-center hover:bg-[#ff3d12] active:scale-90 transition-all shadow-md cursor-pointer">+</button></div></div>
             </div>
           ))}
         </div>
 
-        {/* BOTTOM SMALL ICONS */}
-        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-white border-2 border-amber-200 rounded-[16px] p-5 text-center"><div className="w-10 h-10 mx-auto bg-amber-50 rounded-full flex items-center justify-center text-[18px] border border-amber-200">💎</div><div className="font-bold text-[13px] mt-3">১০০% অরিজিনাল</div><div className="text-[11px] text-gray-500">গ্যারান্টি সহ</div></div>
-          <div className="bg-white border-2 border-blue-200 rounded-[16px] p-5 text-center"><div className="w-10 h-10 mx-auto bg-blue-50 rounded-full flex items-center justify-center text-[18px] border border-blue-200">🚚</div><div className="font-bold text-[13px] mt-3">ঢাকায় ফ্রি ডেলিভারি</div><div className="text-[11px] text-gray-500">Inside Dhaka</div></div>
-          <div className="bg-white border-2 border-green-200 rounded-[16px] p-5 text-center"><div className="w-10 h-10 mx-auto bg-green-50 rounded-full flex items-center justify-center text-[18px] border border-green-200">💵</div><div className="font-bold text-[13px] mt-3">Cash on Delivery</div><div className="text-[11px] text-gray-500">হাতে পেয়ে টাকা</div></div>
-          <div className="bg-white border-2 border-purple-200 rounded-[16px] p-5 text-center"><div className="w-10 h-10 mx-auto bg-purple-50 rounded-full flex items-center justify-center text-[18px] border border-purple-200">↩️</div><div className="font-bold text-[13px] mt-3">৩ দিনে রিটার্ন</div><div className="text-[11px] text-gray-500">সহজ রিটার্ন</div></div>
+        {/* BOTTOM 4 BOXES - NOW COLORFUL & PREMIUM */}
+        <div className="mt-24">
+          <div className="text-center mb-8"><div className="inline-flex bg-black text-white text-[10px] tracking-[0.3em] px-4 py-1.5 rounded-full">WHY CHOOSE US</div><h3 className="font-serif text-[28px] font-bold mt-4">আপনার আস্থাই আমাদের শক্তি</h3></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+            {/* 1 - AMBER */}
+            <div className="bg-gradient-to-br from-[#fff7ed] to-[#ffedd5] border-2 border-[#fdba74] rounded-[20px] p-6 text-center shadow-[0_8px_20px_rgba(251,146,60,0.15)] hover:shadow-[0_12px_30px_rgba(251,146,60,0.25)] hover:-translate-y-1 transition-all group">
+              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-amber-400 to-orange-500 rounded-[12px] flex items-center justify-center text-[22px] shadow-[0_4px_12px_rgba(251,146,60,0.4)] group-hover:scale-110 transition-transform">💎</div>
+              <div className="font-black text-[14px] mt-4 text-[#7c2d12]">১০০% অরিজিনাল</div><div className="text-[11px] font-bold text-[#ea580c] mt-1 bg-white/70 inline-block px-2.5 py-0.5 rounded-full">গ্যারান্টি সহ ✓</div>
+            </div>
+            {/* 2 - BLUE */}
+            <div className="bg-gradient-to-br from-[#eff6ff] to-[#dbeafe] border-2 border-[#93c5fd] rounded-[20px] p-6 text-center shadow-[0_8px_20px_rgba(59,130,246,0.15)] hover:shadow-[0_12px_30px_rgba(59,130,246,0.25)] hover:-translate-y-1 transition-all group">
+              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-blue-400 to-cyan-500 rounded-[12px] flex items-center justify-center text-[22px] shadow-[0_4px_12px_rgba(59,130,246,0.4)] group-hover:scale-110 transition-transform">🚚</div>
+              <div className="font-black text-[14px] mt-4 text-[#1e3a8a]">ঢাকায় ফ্রি ডেলিভারি</div><div className="text-[11px] font-bold text-[#2563eb] mt-1 bg-white/70 inline-block px-2.5 py-0.5 rounded-full">Inside Dhaka ✓</div>
+            </div>
+            {/* 3 - GREEN */}
+            <div className="bg-gradient-to-br from-[#f0fdf4] to-[#dcfce7] border-2 border-[#86efac] rounded-[20px] p-6 text-center shadow-[0_8px_20px_rgba(34,197,94,0.15)] hover:shadow-[0_12px_30px_rgba(34,197,94,0.25)] hover:-translate-y-1 transition-all group">
+              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-green-400 to-emerald-500 rounded-[12px] flex items-center justify-center text-[22px] shadow-[0_4px_12px_rgba(34,197,94,0.4)] group-hover:scale-110 transition-transform">💵</div>
+              <div className="font-black text-[14px] mt-4 text-[#14532d]">Cash on Delivery</div><div className="text-[11px] font-bold text-[#16a34a] mt-1 bg-white/70 inline-block px-2.5 py-0.5 rounded-full">হাতে পেয়ে টাকা ✓</div>
+            </div>
+            {/* 4 - PURPLE */}
+            <div className="bg-gradient-to-br from-[#faf5ff] to-[#f3e8ff] border-2 border-[#d8b4fe] rounded-[20px] p-6 text-center shadow-[0_8px_20px_rgba(168,85,247,0.15)] hover:shadow-[0_12px_30px_rgba(168,85,247,0.25)] hover:-translate-y-1 transition-all group">
+              <div className="w-12 h-12 mx-auto bg-gradient-to-br from-purple-400 to-pink-500 rounded-[12px] flex items-center justify-center text-[22px] shadow-[0_4px_12px_rgba(168,85,247,0.4)] group-hover:scale-110 transition-transform">↩️</div>
+              <div className="font-black text-[14px] mt-4 text-[#581c87]">৩ দিনে রিটার্ন</div><div className="text-[11px] font-bold text-[#9333ea] mt-1 bg-white/70 inline-block px-2.5 py-0.5 rounded-full">সহজ রিটার্ন ✓</div>
+            </div>
+          </div>
         </div>
       </main>
 
-      {/* TOAST - কার্টে যোগ হলে দেখাবে */}
-      {toast && <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl z-[100] animate-bounce">{toast}</div>}
-
+      {toast && <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-full text-sm font-bold shadow-2xl z-[100]">{toast}</div>}
       <button onClick={()=>window.open(`https://wa.me/${WHATSAPP_NUMBER}`,'_blank')} className="fixed bottom-6 right-6 w-14 h-14 bg-[#25D366] rounded-full shadow-lg flex items-center justify-center text-white text-2xl z-40">💬</button>
-
       <footer className="bg-black text-white"><div className="max-w-[1300px] mx-auto px-4 md:px-8 py-8 flex justify-between"><div className="tracking-[0.2em] font-black text-sm">GAUSIA COLLECTION</div><div className="text-sm">WhatsApp: {WHATSAPP_NUMBER}</div></div></footer>
-
-      {showCart && (<div className="fixed inset-0 bg-black/50 z-50 flex justify-end"><div className="bg-white w-full max-w-sm p-6 flex flex-col h-full"><div className="flex justify-between mb-6"><h2 className="font-bold">{L.cart} ({cart.length})</h2><button onClick={()=>setShowCart(false)} className="text-xl">✕</button></div><div className="flex-1 overflow-auto space-y-3">{cart.length===0 ? <p className="text-sm text-gray-500">কার্ট খালি</p> : cart.map((p,i)=><div key={i} className="flex justify-between py-3 border-b text-sm"><span>{lang==='bn'?p.bn:p.en}</span><span className="font-bold">{p.price}৳</span></div>)}</div>{cart.length>0 && <><div className="border-t pt-4 mt-4 flex justify-between font-black"><span>মোট:</span><span>{cart.reduce((s,p)=>s+p.price,0)}৳</span></div><button onClick={()=>{ let msg=`Order:%0A`; cart.forEach((p:any,i:number)=>{ msg+=`${i+1}. ${lang==='bn'?p.bn:p.en} - ${p.price}৳%0A`; }); window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`,'_blank'); }} className="bg-black text-white rounded-full py-4 mt-4 font-bold">WhatsApp এ অর্ডার করুন</button></>}</div></div>)}
+      {showCart && (<div className="fixed inset-0 bg-black/50 z-50 flex justify-end"><div className="bg-white w-full max-w-sm p-6 flex flex-col h-full"><div className="flex justify-between mb-6"><h2 className="font-bold">কার্ট ({cart.length})</h2><button onClick={()=>setShowCart(false)} className="text-xl">✕</button></div><div className="flex-1 overflow-auto space-y-3">{cart.length===0 ? <p className="text-sm text-gray-500">কার্ট খালি</p> : cart.map((p,i)=><div key={i} className="flex justify-between py-3 border-b text-sm"><span>{lang==='bn'?p.bn:p.en}</span><span className="font-bold">{p.price}৳</span></div>)}</div>{cart.length>0 && <><div className="border-t pt-4 mt-4 flex justify-between font-black"><span>মোট:</span><span>{cart.reduce((s,p)=>s+p.price,0)}৳</span></div><button onClick={()=>{ let msg=`Order:%0A`; cart.forEach((p:any,i:number)=>{ msg+=`${i+1}. ${lang==='bn'?p.bn:p.en} - ${p.price}৳%0A`; }); window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`,'_blank'); }} className="bg-black text-white rounded-full py-4 mt-4 font-bold">WhatsApp এ অর্ডার করুন</button></>}</div></div>)}
     </div>
   );
 }
