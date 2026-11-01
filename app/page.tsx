@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const WHATSAPP_NUMBER = "8801700000000"; // এখানে আপনার নাম্বার দিবেন ভাই, যেমন 8801712345678
+const WHATSAPP_NUMBER = "8801913129137"; // এখানে আপনার নাম্বার দিবেন ভাই, যেমন 8801712345678
 
 const DEFAULT_CATS = [
   { bn: "সব", en: "All", icon: "✨" },
