@@ -6,6 +6,8 @@ export default function AdminPage(){
   const [products, setProducts] = useState<any[]>([]);
   const [pass, setPass] = useState("");
   const [ok, setOk] = useState(false);
+  const [editing, setEditing] = useState<any>(null);
+  const [newPrice, setNewPrice] = useState("");
 
   useEffect(()=>{
     try {
@@ -13,10 +15,14 @@ export default function AdminPage(){
       const p = localStorage.getItem("gausia_products");
       if(s) setSellers(JSON.parse(s));
       if(p) setProducts(JSON.parse(p));
-      // যদি আগে লগইন করা থাকে
       if(localStorage.getItem("gausia_admin_ok")==="yes") setOk(true);
     } catch{}
   },[]);
+
+  const saveProducts = (newProds:any[]) => {
+    setProducts(newProds);
+    localStorage.setItem("gausia_products", JSON.stringify(newProds));
+  };
 
   const check = () => {
     if(pass==="1234" || pass==="admin"){
@@ -25,6 +31,20 @@ export default function AdminPage(){
     } else {
       alert("ভুল পাসওয়ার্ড - পাসওয়ার্ড হলো: 1234");
     }
+  };
+
+  const startEditPrice = (p:any) => {
+    setEditing(p);
+    setNewPrice(String(p.price));
+  };
+
+  const savePrice = () => {
+    if(!newPrice) { alert("দাম লিখুন"); return; }
+    const updated = products.map((pr:any)=> pr.id===editing.id ? {...pr, price: parseInt(newPrice)} : pr);
+    saveProducts(updated);
+    setEditing(null);
+    setNewPrice("");
+    alert(`✅ ${editing.name} এর নতুন দাম ${newPrice}৳ সেভ হয়েছে! কাস্টমার পেজেও চলে গেছে!`);
   };
 
   if(!ok){
@@ -45,23 +65,41 @@ export default function AdminPage(){
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="max-w-3xl mx-auto">
         <h1 className="font-black text-xl">👑 অ্যাডমিন প্যানেল - দোকানদার রেকর্ড</h1>
-        <p className="text-sm text-gray-500 mt-1">মোট দোকান: {sellers.length} টি | মোট প্রোডাক্ট: {products.length} টি | পাসওয়ার্ড: 1234</p>
+        <p className="text-sm text-gray-500 mt-1">মোট দোকান: {sellers.length} টি | মোট প্রোডাক্ট: {products.length} টি</p>
         <button onClick={()=>{localStorage.removeItem("gausia_admin_ok"); setOk(false);}} className="mt-2 text-xs bg-black text-white px-3 py-1 rounded-full">লগআউট</button>
         
+        {editing && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[100]">
+            <div className="bg-white rounded-[20px] p-6 w-full max-w-sm shadow-2xl border-2">
+              <h2 className="font-black">💰 দাম পরিবর্তন করুন</h2>
+              <p className="text-sm mt-2">{editing.name} ({editing.code})</p>
+              <p className="text-xs text-gray-500">পুরানো দাম: {editing.price}৳</p>
+              <input value={newPrice} onChange={e=>setNewPrice(e.target.value)} type="number" placeholder="নতুন দাম" className="w-full mt-4 border-2 border-orange-200 rounded-xl px-4 py-3 text-sm font-bold" autoFocus />
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <button onClick={()=>setEditing(null)} className="bg-gray-100 rounded-full py-3 font-bold text-sm">বাতিল</button>
+                <button onClick={savePrice} className="bg-black text-white rounded-full py-3 font-bold text-sm">✅ সেভ করুন</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-3 mt-5">
           {sellers.map((s:any)=>(
             <div key={s.phone} className="bg-white border rounded-xl p-4 shadow-sm">
               <div className="font-black text-base">{s.name} ({s.code})</div>
               <div className="text-sm mt-2">📞 ফোন: <b>{s.phone}</b></div>
               <div className="text-sm">📍 ঠিকানা: {s.address}</div>
-              <div className="text-xs text-gray-500 mt-1">🕒 রেজিস্ট্রেশন: {s.createdAt}</div>
-              <div className="text-xs mt-2 bg-orange-50 border border-orange-100 rounded-full px-3 py-1 inline-block font-bold">এই দোকানের প্রোডাক্ট: {products.filter((p:any)=>p.shopCode===s.code).length} টি</div>
-              <div className="mt-2 text-[11px] grid grid-cols-1 gap-1">
-                {products.filter((p:any)=>p.shopCode===s.code).map((p:any)=><div key={p.id} className="bg-gray-50 rounded px-2 py-1">▪️ {p.code} - {p.name} - {p.price}৳</div>)}
+              <div className="text-xs mt-3 bg-orange-50 border border-orange-100 rounded-full px-3 py-1 inline-block font-bold">এই দোকানের প্রোডাক্ট: {products.filter((p:any)=>p.shopCode===s.code).length} টি</div>
+              <div className="mt-3 grid gap-2">
+                {products.filter((p:any)=>p.shopCode===s.code).map((p:any)=>(
+                  <div key={p.id} className="bg-gray-50 border rounded-xl px-3 py-2 flex justify-between items-center">
+                    <div className="text-[12px]"><b>{p.code}</b> - {p.name}<br/><span className="font-black text-orange-600">{p.price}৳</span></div>
+                    <button onClick={()=>startEditPrice(p)} className="bg-black text-white text-[11px] px-3 py-1.5 rounded-full font-bold">✏️ দাম বদলান</button>
+                  </div>
+                ))}
               </div>
             </div>
           ))}
-          {sellers.length===0 && <div className="bg-white border rounded-xl p-8 text-center text-gray-400">এখনো কোনো দোকানদার রেজিস্ট্রেশন করেনি<br/><span className="text-[11px]">নোট: রেকর্ড একই ব্রাউজারে থাকে, যে ব্রাউজারে দোকানদার রেজিস্ট্রেশন করেছে ওই ব্রাউজারেই দেখতে পাবেন</span></div>}
         </div>
       </div>
     </div>
