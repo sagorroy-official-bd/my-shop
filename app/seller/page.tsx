@@ -6,6 +6,7 @@ export default function SellerPage() {
   const [shopCode, setShopCode] = useState("");
   const [products, setProducts] = useState<any[]>([]);
   const [form, setForm] = useState({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
+  const [editId, setEditId] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const saved = localStorage.getItem("gausia_products");
@@ -27,6 +28,15 @@ export default function SellerPage() {
   };
   const handleAdd = () => {
     if (!form.name || !form.price) return alert("নাম ও দাম দিন");
+    if (editId !== null) {
+      const updated = products.map(p => p.id === editId ? { ...p, name: form.name, cat: form.cat, price: parseInt(form.price), quality: form.quality, img: form.img || p.img } : p);
+      saveProducts(updated);
+      setEditId(null);
+      setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
+      if(fileRef.current) fileRef.current.value = "";
+      alert("✅ এডিট সফল!");
+      return;
+    }
     const count = products.filter(p => p.shopCode === loggedShop.code).length + 1;
     if(count > 10) return alert("এই দোকানে ১০টা হয়ে গেছে!");
     const code = `${loggedShop.code}-${String(count).padStart(3, "0")}`;
@@ -35,6 +45,21 @@ export default function SellerPage() {
     setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
     if(fileRef.current) fileRef.current.value = "";
     alert(`${code} সফলভাবে আপলোড হয়েছে!`);
+  };
+  const handleDelete = (id: number) => {
+    if(!confirm("এই পণ্যটি ডিলিট করতে চান?")) return;
+    const updated = products.filter(p => p.id !== id);
+    saveProducts(updated);
+  };
+  const handleEdit = (p: any) => {
+    setEditId(p.id);
+    setForm({ name: p.name, cat: p.cat, price: String(p.price), quality: p.quality, img: p.img });
+    window.scrollTo({top: 0, behavior: 'smooth'});
+  };
+  const handleCancelEdit = () => {
+    setEditId(null);
+    setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
+    if(fileRef.current) fileRef.current.value = "";
   };
   const myProducts = products.filter(p => loggedShop && p.shopCode === loggedShop.code);
   if (!loggedShop) {
@@ -58,9 +83,10 @@ export default function SellerPage() {
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-5 grid md:grid-cols-2 gap-5">
-        <div className="bg-white rounded-[20px] border p-5 shadow-sm h-fit">
-          <h2 className="font-black">নতুন পণ্য আপলোড ({myProducts.length+1} নম্বর)</h2>
-          <p className="text-xs text-gray-500 mt-1">কোড অটো: {loggedShop.code}-{(myProducts.length+1).toString().padStart(3,"0")}</p>
+        <div className="bg-white rounded-[20px] border p-5 shadow-sm h-fit sticky top-[70px]">
+          <h2 className="font-black">{editId ? "✏️ এডিট করুন" : `নতুন পণ্য আপলোড (${myProducts.length+1} নম্বর)`}</h2>
+          {editId && <p className="text-xs text-orange-600 font-bold mt-1">এডিট মোডে আছেন - পরিবর্তন করে আপডেট করুন</p>}
+          {!editId && <p className="text-xs text-gray-500 mt-1">কোড অটো: {loggedShop.code}-{(myProducts.length+1).toString().padStart(3,"0")}</p>}
           <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="পণ্যের নাম: যেমন জর্জেট শাড়ি" className="w-full mt-4 border rounded-xl px-4 py-3 text-sm" />
           <div className="grid grid-cols-2 gap-2 mt-3">
             <select value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} className="border rounded-xl px-3 py-3 text-sm"><option value="Women">👩 মহিলা</option><option value="Men">👨 পুরুষ</option><option value="Girls">👧 মেয়ে</option><option value="Boys">👦 ছেলে</option><option value="Baby">👶 বেবি</option></select>
@@ -72,15 +98,26 @@ export default function SellerPage() {
             {form.img ? "✅ ছবি সিলেক্ট হয়েছে - পরিবর্তন করতে ক্লিক করুন" : "📁 গ্যালারি থেকে ছবি বাছাই করুন (ক্লিক করুন)"}
           </button>
           {form.img && <img src={form.img} className="w-full h-32 object-cover rounded-xl mt-3 border" alt="preview"/>}
-          <button onClick={handleAdd} className="w-full mt-4 bg-black text-white rounded-full py-3 font-black text-sm">আপলোড করুন - {myProducts.length+1}/10</button>
+          <div className="flex gap-2">
+            <button onClick={handleAdd} className={`w-full mt-4 rounded-full py-3 font-black text-sm ${editId ? "bg-orange-500 text-white" : "bg-black text-white"}`}>{editId ? "✅ আপডেট করুন" : `আপলোড করুন - ${myProducts.length+1}/10`}</button>
+            {editId && <button onClick={handleCancelEdit} className="mt-4 border rounded-full px-5 py-3 font-bold text-sm">বাতিল</button>}
+          </div>
         </div>
         <div>
           <h2 className="font-black">আমার আপলোড ({myProducts.length} টি)</h2>
           <div className="grid grid-cols-2 gap-3 mt-3">
             {myProducts.map(p=>(
-              <div key={p.id} className="bg-white rounded-[18px] border overflow-hidden"><img src={p.img} className="w-full h-28 object-cover" alt={p.name}/><div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="text-[10px] text-gray-500">{p.cat} | {p.quality==="positive"?"✅":"⚠️"}</div><div className="font-black text-sm mt-1">{p.price}৳</div></div></div>
+              <div key={p.id} className="bg-white rounded-[18px] border overflow-hidden relative group">
+                <img src={p.img} className="w-full h-28 object-cover" alt={p.name}/>
+                <div className="absolute top-1.5 right-1.5 flex gap-1">
+                  <button onClick={()=>handleEdit(p)} className="bg-white shadow text-[10px] w-7 h-7 rounded-full flex items-center justify-center font-bold hover:bg-black hover:text-white">✏️</button>
+                  <button onClick={()=>handleDelete(p.id)} className="bg-red-500 text-white shadow text-[10px] w-7 h-7 rounded-full flex items-center justify-center font-bold hover:bg-red-600">🗑️</button>
+                </div>
+                <div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="text-[10px] text-gray-500">{p.cat} | {p.quality==="positive"?"✅":"⚠️"}</div><div className="font-black text-sm mt-1">{p.price}৳</div></div>
+              </div>
             ))}
           </div>
+          {myProducts.length===0 && <div className="bg-white border rounded-xl p-8 text-center text-sm text-gray-400 mt-3">এখনো আপলোড করেননি</div>}
         </div>
       </main>
     </div>
