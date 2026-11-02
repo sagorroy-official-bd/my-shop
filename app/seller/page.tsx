@@ -30,12 +30,10 @@ export default function SellerPage() {
     if (!form.name || !form.price) return alert("নাম ও দাম দিন");
     if (editId !== null) {
       const updated = products.map(p => p.id === editId ? { ...p, name: form.name, cat: form.cat, price: parseInt(form.price), quality: form.quality, img: form.img || p.img } : p);
-      saveProducts(updated);
-      setEditId(null);
+      saveProducts(updated); setEditId(null);
       setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
       if(fileRef.current) fileRef.current.value = "";
-      alert("✅ এডিট সফল!");
-      return;
+      alert("✅ এডিট সফল!"); return;
     }
     const count = products.filter(p => p.shopCode === loggedShop.code).length + 1;
     if(count > 10) return alert("এই দোকানে ১০টা হয়ে গেছে!");
@@ -46,21 +44,9 @@ export default function SellerPage() {
     if(fileRef.current) fileRef.current.value = "";
     alert(`${code} সফলভাবে আপলোড হয়েছে!`);
   };
-  const handleDelete = (id: number) => {
-    if(!confirm("এই পণ্যটি ডিলিট করতে চান?")) return;
-    const updated = products.filter(p => p.id !== id);
-    saveProducts(updated);
-  };
-  const handleEdit = (p: any) => {
-    setEditId(p.id);
-    setForm({ name: p.name, cat: p.cat, price: String(p.price), quality: p.quality, img: p.img });
-    window.scrollTo({top: 0, behavior: 'smooth'});
-  };
-  const handleCancelEdit = () => {
-    setEditId(null);
-    setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
-    if(fileRef.current) fileRef.current.value = "";
-  };
+  const handleDelete = (id: number) => { if(!confirm("এই পণ্যটি ডিলিট করতে চান?")) return; const updated = products.filter(p => p.id !== id); saveProducts(updated); };
+  const handleEdit = (p: any) => { setEditId(p.id); setForm({ name: p.name, cat: p.cat, price: String(p.price), quality: p.quality, img: p.img }); window.scrollTo({top: 0, behavior: 'smooth'}); };
+  const handleCancelEdit = () => { setEditId(null); setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" }); if(fileRef.current) fileRef.current.value = ""; };
   const myProducts = products.filter(p => loggedShop && p.shopCode === loggedShop.code);
   if (!loggedShop) {
     return (
@@ -79,13 +65,13 @@ export default function SellerPage() {
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex gap-2 items-center"><div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center font-black">G</div><div><div className="font-black text-sm">{loggedShop.name}</div><div className="text-[11px]">{loggedShop.code} | {myProducts.length}/10 টি</div></div></div>
-          <div className="flex gap-2"><a href="/" target="_blank" className="text-xs border px-3 py-1.5 rounded-full font-bold">কাস্টমার পেজ</a><button onClick={handleLogout} className="text-xs bg-black text-white px-3 py-1.5 rounded-full">লগআউট</button></div>
+          <button onClick={handleLogout} className="text-xs bg-black text-white px-4 py-2 rounded-full font-bold">লগআউট</button>
         </div>
       </header>
       <main className="max-w-5xl mx-auto px-4 py-5 grid md:grid-cols-2 gap-5">
         <div className="bg-white rounded-[20px] border p-5 shadow-sm h-fit sticky top-[70px]">
           <h2 className="font-black">{editId ? "✏️ এডিট করুন" : `নতুন পণ্য আপলোড (${myProducts.length+1} নম্বর)`}</h2>
-          {editId && <p className="text-xs text-orange-600 font-bold mt-1">এডিট মোডে আছেন - পরিবর্তন করে আপডেট করুন</p>}
+          {editId && <p className="text-xs text-orange-600 font-bold mt-1">এডিট মোডে আছেন</p>}
           {!editId && <p className="text-xs text-gray-500 mt-1">কোড অটো: {loggedShop.code}-{(myProducts.length+1).toString().padStart(3,"0")}</p>}
           <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="পণ্যের নাম: যেমন জর্জেট শাড়ি" className="w-full mt-4 border rounded-xl px-4 py-3 text-sm" />
           <div className="grid grid-cols-2 gap-2 mt-3">
@@ -95,7 +81,7 @@ export default function SellerPage() {
           <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" placeholder="দাম: 1250" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
           <button onClick={()=>fileRef.current?.click()} className="w-full mt-3 border-2 border-dashed rounded-xl px-4 py-4 text-sm font-bold bg-gray-50 hover:bg-white">
-            {form.img ? "✅ ছবি সিলেক্ট হয়েছে - পরিবর্তন করতে ক্লিক করুন" : "📁 গ্যালারি থেকে ছবি বাছাই করুন (ক্লিক করুন)"}
+            {form.img ? "✅ ছবি সিলেক্ট হয়েছে" : "📁 গ্যালারি থেকে ছবি বাছাই করুন (ক্লিক করুন)"}
           </button>
           {form.img && <img src={form.img} className="w-full h-32 object-cover rounded-xl mt-3 border" alt="preview"/>}
           <div className="flex gap-2">
@@ -107,17 +93,16 @@ export default function SellerPage() {
           <h2 className="font-black">আমার আপলোড ({myProducts.length} টি)</h2>
           <div className="grid grid-cols-2 gap-3 mt-3">
             {myProducts.map(p=>(
-              <div key={p.id} className="bg-white rounded-[18px] border overflow-hidden relative group">
+              <div key={p.id} className="bg-white rounded-[18px] border overflow-hidden relative">
                 <img src={p.img} className="w-full h-28 object-cover" alt={p.name}/>
                 <div className="absolute top-1.5 right-1.5 flex gap-1">
-                  <button onClick={()=>handleEdit(p)} className="bg-white shadow text-[10px] w-7 h-7 rounded-full flex items-center justify-center font-bold hover:bg-black hover:text-white">✏️</button>
-                  <button onClick={()=>handleDelete(p.id)} className="bg-red-500 text-white shadow text-[10px] w-7 h-7 rounded-full flex items-center justify-center font-bold hover:bg-red-600">🗑️</button>
+                  <button onClick={()=>handleEdit(p)} className="bg-white shadow text-[10px] w-7 h-7 rounded-full flex items-center justify-center font-bold">✏️</button>
+                  <button onClick={()=>handleDelete(p.id)} className="bg-red-500 text-white shadow text-[10px] w-7 h-7 rounded-full flex items-center justify-center font-bold">🗑️</button>
                 </div>
-                <div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="text-[10px] text-gray-500">{p.cat} | {p.quality==="positive"?"✅":"⚠️"}</div><div className="font-black text-sm mt-1">{p.price}৳</div></div>
+                <div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="text-[10px] text-gray-500">{p.cat}</div><div className="font-black text-sm mt-1">{p.price}৳</div></div>
               </div>
             ))}
           </div>
-          {myProducts.length===0 && <div className="bg-white border rounded-xl p-8 text-center text-sm text-gray-400 mt-3">এখনো আপলোড করেননি</div>}
         </div>
       </main>
     </div>
