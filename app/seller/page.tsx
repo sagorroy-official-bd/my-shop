@@ -1,85 +1,54 @@
 "use client";
-import { useState, useEffect } from "react";
-
-const SHOPS = [
-  { code: "SHOP-01", name: "মা ফ্যাশন হাউজ" },
-  { code: "SHOP-02", name: "বোরকা কালেকশন" },
-  { code: "SHOP-03", name: "পুরুষ ফ্যাশন" },
-  { code: "SHOP-04", name: "বাচ্চাদের দুনিয়া" },
-  { code: "SHOP-05", name: "সিটি গোল্ড হাউজ" },
-  { code: "SHOP-06", name: "থ্রি পিস কর্নার" },
-  { code: "SHOP-07", name: "ছেলেদের পাঞ্জাবি" },
-  { code: "SHOP-08", name: "বেনারসি কালেকশন" },
-  { code: "SHOP-09", name: "মেয়েদের পার্টি ড্রেস" },
-  { code: "SHOP-10", name: "ফ্যামিলি কালেকশন" },
-];
-
+import { useState, useEffect, useRef } from "react";
+const SHOPS = [{ code: "SHOP-01", name: "মা ফ্যাশন হাউজ" },{ code: "SHOP-02", name: "বোরকা কালেকশন" },{ code: "SHOP-03", name: "পুরুষ ফ্যাশন" },{ code: "SHOP-04", name: "বাচ্চাদের দুনিয়া" },{ code: "SHOP-05", name: "সিটি গোল্ড হাউজ" },{ code: "SHOP-06", name: "থ্রি পিস কর্নার" },{ code: "SHOP-07", name: "ছেলেদের পাঞ্জাবি" },{ code: "SHOP-08", name: "বেনারসি কালেকশন" },{ code: "SHOP-09", name: "মেয়েদের পার্টি ড্রেস" },{ code: "SHOP-10", name: "ফ্যামিলি কালেকশন" },];
 export default function SellerPage() {
   const [loggedShop, setLoggedShop] = useState<any>(null);
   const [shopCode, setShopCode] = useState("");
   const [products, setProducts] = useState<any[]>([]);
   const [form, setForm] = useState({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
-
+  const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     const saved = localStorage.getItem("gausia_products");
     if (saved) setProducts(JSON.parse(saved));
     const logged = localStorage.getItem("gausia_seller");
     if (logged) setLoggedShop(JSON.parse(logged));
   }, []);
-
-  const saveProducts = (newProds: any[]) => {
-    setProducts(newProds);
-    localStorage.setItem("gausia_products", JSON.stringify(newProds));
-  };
-
+  const saveProducts = (newProds: any[]) => { setProducts(newProds); localStorage.setItem("gausia_products", JSON.stringify(newProds)); };
   const handleLogin = () => {
     const shop = SHOPS.find(s => s.code === shopCode.toUpperCase().trim());
-    if (shop) {
-      setLoggedShop(shop);
-      localStorage.setItem("gausia_seller", JSON.stringify(shop));
-    } else {
-      alert("ভুল কোড! SHOP-01 থেকে SHOP-10 লিখুন");
-    }
+    if (shop) { setLoggedShop(shop); localStorage.setItem("gausia_seller", JSON.stringify(shop)); } else { alert("ভুল কোড! SHOP-01 থেকে SHOP-10 লিখুন"); }
   };
-
-  const handleLogout = () => {
-    setLoggedShop(null);
-    localStorage.removeItem("gausia_seller");
+  const handleLogout = () => { setLoggedShop(null); localStorage.removeItem("gausia_seller"); };
+  const handleFile = (e: any) => {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev: any) => { setForm({ ...form, img: ev.target.result }); };
+    reader.readAsDataURL(file);
   };
-
   const handleAdd = () => {
     if (!form.name || !form.price) return alert("নাম ও দাম দিন");
     const count = products.filter(p => p.shopCode === loggedShop.code).length + 1;
-    if(count > 10) return alert("এই দোকানে ১০টা হয়ে গেছে! অন্য দোকানে লগইন করুন");
+    if(count > 10) return alert("এই দোকানে ১০টা হয়ে গেছে!");
     const code = `${loggedShop.code}-${String(count).padStart(3, "0")}`;
-    const newProduct = {
-      id: Date.now(), code, name: form.name, cat: form.cat,
-      shopCode: loggedShop.code, shopName: loggedShop.name,
-      price: parseInt(form.price), quality: form.quality,
-      img: form.img || `https://picsum.photos/seed/${code}/400/400`,
-    };
+    const newProduct = { id: Date.now(), code, name: form.name, cat: form.cat, shopCode: loggedShop.code, shopName: loggedShop.name, price: parseInt(form.price), quality: form.quality, img: form.img || `https://picsum.photos/seed/${code}/400/400`, };
     saveProducts([...products, newProduct]);
     setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" });
-    alert(`${code} সফলভাবে আপলোড হয়েছে! ${count}/10`);
+    if(fileRef.current) fileRef.current.value = "";
+    alert(`${code} সফলভাবে আপলোড হয়েছে!`);
   };
-
   const myProducts = products.filter(p => loggedShop && p.shopCode === loggedShop.code);
-
   if (!loggedShop) {
     return (
       <div className="min-h-screen bg-[#fff8f0] flex items-center justify-center p-4">
         <div className="bg-white rounded-[24px] border shadow-xl p-8 w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center text-white font-black text-xl" style={{background:"linear-gradient(135deg,#ff6a00,#ee0979)"}}>G</div>
           <h1 className="font-black text-xl mt-3">দোকানদার লগইন</h1>
-          <p className="text-xs text-gray-500 mt-1">১০ দোকানের ভার্চুয়াল টেস্ট</p>
           <input value={shopCode} onChange={e=>setShopCode(e.target.value)} placeholder="যেমন: SHOP-01" className="w-full mt-5 border rounded-full px-4 py-3 text-sm font-bold text-center" />
           <button onClick={handleLogin} className="w-full mt-3 bg-black text-white rounded-full py-3 font-black text-sm">লগইন করুন</button>
-          <div className="mt-4 text-[11px] text-left bg-gray-50 p-3 rounded-xl"><b>ভার্চুয়াল কোড:</b><br/>SHOP-01 থেকে SHOP-10<br/>প্রতিটা থেকে ১০টা করে = ১০০টা</div>
         </div>
       </div>
     );
   }
-
   return (
     <div className="min-h-screen bg-[#fff8f0]">
       <header className="bg-white border-b sticky top-0 z-50">
@@ -98,7 +67,11 @@ export default function SellerPage() {
             <select value={form.quality} onChange={e=>setForm({...form,quality:e.target.value})} className="border rounded-xl px-3 py-3 text-sm"><option value="positive">✅ পজিটিভ</option><option value="negative">⚠️ নেগেটিভ</option></select>
           </div>
           <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" placeholder="দাম: 1250" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
-          <input value={form.img} onChange={e=>setForm({...form,img:e.target.value})} placeholder="ছবির লিংক (খালি রাখলে অটো)" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+          <button onClick={()=>fileRef.current?.click()} className="w-full mt-3 border-2 border-dashed rounded-xl px-4 py-4 text-sm font-bold bg-gray-50 hover:bg-white">
+            {form.img ? "✅ ছবি সিলেক্ট হয়েছে - পরিবর্তন করতে ক্লিক করুন" : "📁 গ্যালারি থেকে ছবি বাছাই করুন (ক্লিক করুন)"}
+          </button>
+          {form.img && <img src={form.img} className="w-full h-32 object-cover rounded-xl mt-3 border" alt="preview"/>}
           <button onClick={handleAdd} className="w-full mt-4 bg-black text-white rounded-full py-3 font-black text-sm">আপলোড করুন - {myProducts.length+1}/10</button>
         </div>
         <div>
@@ -108,8 +81,6 @@ export default function SellerPage() {
               <div key={p.id} className="bg-white rounded-[18px] border overflow-hidden"><img src={p.img} className="w-full h-28 object-cover" alt={p.name}/><div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="text-[10px] text-gray-500">{p.cat} | {p.quality==="positive"?"✅":"⚠️"}</div><div className="font-black text-sm mt-1">{p.price}৳</div></div></div>
             ))}
           </div>
-          {myProducts.length===0 && <div className="bg-white border rounded-xl p-8 text-center text-sm text-gray-400 mt-3">এখনো আপলোড করেননি</div>}
-          {myProducts.length===10 && <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center text-sm font-bold text-green-700 mt-3">🎉 এই দোকানে ১০টা শেষ! এবার লগআউট করে SHOP-02 এ যান</div>}
         </div>
       </main>
     </div>
