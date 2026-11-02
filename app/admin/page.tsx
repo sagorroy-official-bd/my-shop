@@ -1,23 +1,87 @@
 "use client";
 import { useState, useEffect } from "react";
-const DEFAULT_CATS=[{bn:"শাড়ি",en:"Saree"},{bn:"থ্রি পিস",en:"Three Piece"},{bn:"লেহেঙ্গা",en:"Lehenga"},{bn:"বোরকা",en:"Borka"},{bn:"সিটি গোল্ড",en:"City Gold"}];
-export default function Admin(){
-const [ok,setOk]=useState(false); const [pass,setPass]=useState(""); const [products,setProducts]=useState<any[]>([]); const [cats,setCats]=useState(DEFAULT_CATS);
-const [newCat,setNewCat]=useState({bn:"",en:""}); const [form,setForm]=useState({bn:"",en:"",price:"",img:"",cat:"বোরকা"});
-useEffect(()=>{ const s=localStorage.getItem("gausia_products"); if(s) setProducts(JSON.parse(s)); const c=localStorage.getItem("gausia_cats"); if(c) setCats(JSON.parse(c)); },[]);
-const saveCats=(l:any[])=>{ setCats(l); localStorage.setItem("gausia_cats",JSON.stringify(l)); };
-const saveProducts=(l:any[])=>{ setProducts(l); localStorage.setItem("gausia_products",JSON.stringify(l)); };
-const onImg=(e:any)=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>setForm({...form,img:r.result as string}); r.readAsDataURL(f); };
-if(!ok) return (<div className="min-h-screen flex items-center justify-center bg-black"><div className="bg-white p-8 rounded-2xl w-80 text-center"><h1 className="font-black mb-4">গাউছিয়া এডমিন 🔒</h1><input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="01913129137" className="border p-3 rounded-full w-full text-center"/><button onClick={()=>pass==="01913129137"?setOk(true):alert("ভুল")} className="bg-black text-white w-full py-3 rounded-full mt-3 font-black">লগইন</button></div></div>);
-return(<div className="min-h-screen bg-gray-100 p-3"><div className="max-w-4xl mx-auto">
-<h1 className="font-black text-xl mb-4">এডমিন - {products.length} প্রোডাক্ট</h1>
-<div className="bg-green-50 border-2 border-green-500 p-3 rounded-2xl mb-4 flex gap-2">
-<button onClick={()=>{ const data=JSON.stringify({products,cats}); const blob=new Blob([data],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=`gausia-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); }} className="bg-green-600 text-white px-4 py-2 rounded-full text-xs font-black flex-1">💾 ব্যাকআপ ডাউনলোড (হারাবে না)</button>
-<label className="bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-black flex-1 text-center cursor-pointer">📤 ব্যাকআপ থেকে ফেরত আনুন<input type="file" hidden onChange={(e:any)=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ const d=JSON.parse(r.result as string); if(d.products) saveProducts(d.products); if(d.cats) saveCats(d.cats); alert("ফেরত এসেছে!"); }catch{ alert("ফাইল ভুল"); } }; r.readAsText(f); }}/></label>
-</div>
-<div className="bg-white p-4 rounded-2xl shadow mb-4"><h2 className="font-black text-sm mb-2">📂 ক্যাটাগরি যোগ</h2><div className="flex gap-2 mb-2"><input value={newCat.bn} onChange={e=>setNewCat({...newCat,bn:e.target.value})} placeholder="বাংলা" className="border p-2 rounded-xl w-full text-sm"/><input value={newCat.en} onChange={e=>setNewCat({...newCat,en:e.target.value})} placeholder="English" className="border p-2 rounded-xl w-full text-sm"/><button onClick={()=>{ if(!newCat.bn) return; saveCats([...cats,newCat]); setNewCat({bn:"",en:""}); }} className="bg-[#ff006a] text-white px-4 rounded-xl font-black">+</button></div><div className="flex flex-wrap gap-2">{cats.map((c:any,i:number)=><span key={i} className="bg-gray-100 px-3 py-1 rounded-full text-xs">{c.bn} <button onClick={()=>saveCats(cats.filter((_:any,idx:number)=>idx!==i))} className="text-red-500">✕</button></span>)}</div></div>
-<div className="bg-white p-4 rounded-2xl shadow mb-4"><h2 className="font-black text-sm mb-2">🛍️ প্রোডাক্ট যোগ</h2><input value={form.bn} onChange={e=>setForm({...form,bn:e.target.value})} placeholder="বাংলা নাম" className="border p-3 rounded-xl w-full mb-2"/><input value={form.en} onChange={e=>setForm({...form,en:e.target.value})} placeholder="English" className="border p-3 rounded-xl w-full mb-2"/><div className="grid grid-cols-2 gap-2 mb-2"><input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" placeholder="দাম" className="border p-3 rounded-xl"/><select value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} className="border p-3 rounded-xl font-bold">{cats.map((c:any)=><option key={c.bn} value={c.bn}>{c.bn}</option>)}</select></div><input type="file" accept="image/*" onChange={onImg} className="border p-3 rounded-xl w-full mb-2"/>{form.img&&<img src={form.img} className="w-20 h-20 rounded-xl mb-2"/>}<button onClick={()=>{ if(!form.bn||!form.price||!form.img) return alert("নাম,দাম,ছবি দিন"); saveProducts([{id:Date.now(),...form,price:Number(form.price)},...products]); setForm({bn:"",en:"",price:"",img:"",cat:cats[0].bn}); }} className="bg-black text-white w-full py-3 rounded-full font-black">যোগ করুন +</button></div>
-<div className="bg-white p-4 rounded-2xl shadow"><h2 className="font-black text-sm mb-3">📋 প্রোডাক্ট লিস্ট</h2><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{products.map((p:any)=><div key={p.id} className="border rounded-xl p-2 relative"><button onClick={()=>{ if(confirm("ডিলিট?")) saveProducts(products.filter(x=>x.id!==p.id)); }} className="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full text-xs">✕</button><img src={p.img} className="w-full h-20 object-cover rounded-lg"/><p className="text-xs font-bold">{p.bn}</p><p className="text-[10px]">৳{p.price} | {p.cat}</p></div>)}</div></div>
-<a href="/" className="bg-[#ff006a] text-white px-6 py-2 rounded-full inline-block mt-4 font-black">পাবলিক পেজ দেখুন 🌸</a>
-</div></div>);
+
+type Product = { id: number; code: string; name: string; price: number; finalPrice: number; shop: string; quality: "positive" | "negative"; status: "pending" | "published" };
+
+export default function Admin() {
+  const [ok, setOk] = useState(false);
+  const [pass, setPass] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [filter, setFilter] = useState("all");
+
+  useEffect(()=>{
+    const s = localStorage.getItem("gausia_admin_products");
+    if(s) setProducts(JSON.parse(s));
+    else {
+      // Demo - 100 দোকানদারের পণ্য Pending
+      const demo: Product[] = [
+        { id: 1, code: "SHOP-01-001", name: "জর্জেট শাড়ি", price: 800, finalPrice: 0, shop: "SHOP-01", quality: "positive", status: "pending" },
+        { id: 2, code: "SHOP-02-001", name: "কাতান বোরকা", price: 650, finalPrice: 0, shop: "SHOP-02", quality: "negative", status: "pending" },
+      ];
+      setProducts(demo);
+    }
+  },[]);
+
+  const save = (list: Product[]) => { setProducts(list); localStorage.setItem("gausia_admin_products", JSON.stringify(list)); localStorage.setItem("gausia_products", JSON.stringify(list.filter(p=>p.status==="published"))); };
+
+  const publish = (id: number, finalPrice: number) => {
+    const updated = products.map(p=> p.id===id ? {...p, finalPrice, status: "published" as const} : p);
+    save(updated);
+    alert(`পাবলিশ হয়েছে! কোড: ${products.find(p=>p.id===id)?.code} - কাস্টমার পেজে চলে গেছে ✅`);
+  };
+
+  if(!ok){
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        <div className="bg-white p-8 rounded-2xl w-full max-w-sm shadow">
+          <h1 className="font-black text-center text-xl">GAUSIA - এডমিন</h1>
+          <p className="text-center text-xs">১০০ দোকান + কাস্টমার কন্ট্রোল</p>
+          <input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="পাসওয়ার্ড: admin123" className="w-full border-2 rounded-full px-5 py-3 mt-6" />
+          <button onClick={()=>pass==="admin123" ? setOk(true) : alert("ভুল পাসওয়ার্ড")} className="w-full bg-black text-white rounded-full py-3 mt-3 font-bold">লগইন</button>
+        </div>
+      </div>
+    );
+  }
+
+  const filtered = products.filter(p=> filter==="all" ? true : p.status===filter);
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-3">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="font-black text-xl">এডমিন কন্ট্রোল - ৩টা পেজ</h1>
+        <div className="flex gap-2 mt-3">
+          <button onClick={()=>setFilter("all")} className={`px-4 py-2 rounded-full text-xs font-bold ${filter==="all"?"bg-black text-white":"bg-white"}`}>সব ({products.length})</button>
+          <button onClick={()=>setFilter("pending")} className={`px-4 py-2 rounded-full text-xs font-bold ${filter==="pending"?"bg-black text-white":"bg-white"}`}>Pending ({products.filter(p=>p.status==="pending").length})</button>
+          <button onClick={()=>setFilter("published")} className={`px-4 py-2 rounded-full text-xs font-bold ${filter==="published"?"bg-black text-white":"bg-white"}`}>Published ({products.filter(p=>p.status==="published").length})</button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {filtered.map(p=>(
+            <div key={p.id} className="bg-white p-4 rounded-2xl shadow flex flex-col sm:flex-row justify-between gap-3">
+              <div>
+                <div className="font-bold text-sm">{p.code} - {p.name} {p.quality==="positive"?"✅ পজিটিভ":"⚠️ নেগেটিভ"}</div>
+                <div className="text-xs text-gray-500">দোকান: {p.shop} | কেনা: {p.price}৳ | {p.quality==="positive"?"100% অরিজিনাল":"কপি/এভারেজ"}</div>
+                <div className="text-xs mt-1">স্ট্যাটাস: <b>{p.status}</b></div>
+              </div>
+              {p.status==="pending" ? (
+                <div className="flex items-center gap-2">
+                  <input id={`fp-${p.id}`} type="number" placeholder="বিক্রয় দাম" className="border rounded-full px-3 py-2 text-sm w-28" />
+                  <button onClick={()=>{
+                    const el = document.getElementById(`fp-${p.id}`) as HTMLInputElement;
+                    if(!el.value) return alert("বিক্রয় দাম লিখুন");
+                    publish(p.id, Number(el.value));
+                  }} className="bg-black text-white px-5 py-2 rounded-full text-xs font-bold">Publish</button>
+                </div>
+              ) : (
+                <div className="text-sm font-bold text-green-600">✅ কাস্টমার পেজে আছে - {p.finalPrice}৳ {p.quality==="positive"?"✅":"⚠️"}</div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <a href="/" className="bg-[#ff6a00] text-white px-6 py-2 rounded-full inline-block mt-6 text-sm font-bold">কাস্টমার পেজ দেখুন</a>
+        <a href="/seller" className="bg-black text-white px-6 py-2 rounded-full inline-block mt-6 ml-2 text-sm font-bold">দোকানদার পেজ দেখুন</a>
+      </div>
+    </div>
+  );
 }
