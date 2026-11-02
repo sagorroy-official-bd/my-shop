@@ -51,13 +51,14 @@ export default function Home() {
     <div className="min-h-screen bg-[#fdfbf7] text-[#1a1a1a]">
       <div className="bg-[#1a1a1a] text-white text-[11px] text-center py-2.5">{L.top}</div>
       <header className="bg-white border-b sticky top-0 z-50">
-        <div className="max-w-[1300px] mx-auto px-4 md:px-8 h-[70px] flex items-center justify-between gap-3">
-          {/* NEW BEAUTIFUL LOGO WITH ONLINE PLATFORM */}
+        <div className="max-w-[1300px] mx-auto px-4 md:px-8 h-[72px] flex items-center justify-between gap-3">
+          {/* LOGO FIXED - GAUSIA COLLECTION + ONLINE PLATFORM */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-[12px] flex items-center justify-center font-black text-white text-[18px] shadow-lg" style={{background:"linear-gradient(135deg, #ff6a00 0%, #ee0979 50%, #ff6a00 100%)", boxShadow:"0 4px 15px rgba(238,9,121,0.3)"}}>G</div>
+            <div className="w-10 h-10 rounded-[12px] flex items-center justify-center font-black text-white text-[18px] shadow-lg" style={{background:"linear-gradient(135deg, #ff6a00 0%, #ee0979 100%)", boxShadow:"0 4px 15px rgba(238,9,121,0.3)"}}>G</div>
             <div className="leading-none">
-              <div className="font-black tracking-[0.18em] text-[15px] flex items-center gap-1.5"><span>GAUSIA</span><span className="w-1.5 h-1.5 rounded-full bg-[#ff3d12] inline-block animate-pulse"></span></div>
-              <div className="text-[11px] font-bold tracking-[0.15em] mt-0.5" style={{background:"linear-gradient(90deg, #ff6a00, #ee0979)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>{lang==='bn' ? 'অনলাইন প্লাটফর্ম' : 'Online Platform'}</div>
+              <div className="font-black tracking-[0.18em] text-[14px]">GAUSIA</div>
+              <div className="tracking-[0.22em] text-[10px] font-bold text-gray-600 -mt-0.5">COLLECTION</div>
+              <div className="text-[10px] font-bold tracking-[0.1em] mt-1 px-2 py-0.5 rounded-full inline-block text-white" style={{background:"linear-gradient(90deg, #ff6a00, #ee0979)"}}>{lang==='bn' ? 'অনলাইন প্লাটফর্ম' : 'Online Platform'}</div>
             </div>
           </div>
 
@@ -112,7 +113,7 @@ export default function Home() {
 
       {toast && <div className="fixed bottom-24 left-1/2 -translate-x-1/2 bg-black text-white px-6 py-3 rounded-full text-sm font-bold z-[100]">{toast}</div>}
       <button onClick={()=>window.open(`https://wa.me/${WHATSAPP_NUMBER}`,'_blank')} className="fixed bottom-6 right-6 w-14 h-14 bg-[#25D366] rounded-full shadow-lg flex items-center justify-center text-white text-2xl z-40">💬</button>
-      <footer className="bg-black text-white mt-10"><div className="max-w-[1300px] mx-auto px-4 md:px-8 py-10 grid md:grid-cols-3 gap-8"><div><div className="tracking-[0.2em] font-black">GAUSIA COLLECTION</div><div className="text-sm mt-2 font-bold" style={{background:"linear-gradient(90deg, #ff6a00, #ee0979)", WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent"}}>অনলাইন প্লাটফর্ম</div><div className="text-sm text-gray-400 mt-3">ঢাকার গাউছিয়া মার্কেটের সেরা কালেকশন এখন অনলাইনে।</div></div><div><div className="font-bold text-sm">যোগাযোগ</div><div className="text-sm text-gray-400 mt-3">WhatsApp: {WHATSAPP_NUMBER}<br/>ঢাকা, বাংলাদেশ</div></div><div><div className="font-bold text-sm">পেমেন্ট</div><div className="text-sm text-gray-400 mt-3">✓ ক্যাশ অন ডেলিভারি<br/>✓ বিকাশ / নগদ</div></div></div><div className="border-t border-white/10 text-center text-[11px] text-gray-500 py-4">© 2026 Gausia Collection - Online Platform</div></footer>
+      <footer className="bg-black text-white mt-10"><div className="max-w-[1300px] mx-auto px-4 md:px-8 py-10 grid md:grid-cols-3 gap-8"><div><div className="tracking-[0.2em] font-black">GAUSIA COLLECTION</div><div className="text-sm mt-2 font-bold inline-block px-3 py-1 rounded-full text-white" style={{background:"linear-gradient(90deg, #ff6a00, #ee0979)"}}>অনলাইন প্লাটফর্ম</div><div className="text-sm text-gray-400 mt-3">ঢাকার গাউছিয়া মার্কেটের সেরা কালেকশন এখন অনলাইনে।</div></div><div><div className="font-bold text-sm">যোগাযোগ</div><div className="text-sm text-gray-400 mt-3">WhatsApp: {WHATSAPP_NUMBER}<br/>ঢাকা, বাংলাদেশ</div></div><div><div className="font-bold text-sm">পেমেন্ট</div><div className="text-sm text-gray-400 mt-3">✓ ক্যাশ অন ডেলিভারি<br/>✓ বিকাশ / নগদ</div></div></div><div className="border-t border-white/10 text-center text-[11px] text-gray-500 py-4">© 2026 Gausia Collection - Online Platform</div></footer>
       {showCart && (<div className="fixed inset-0 bg-black/50 z-50 flex justify-end"><div className="bg-white w-full max-w-sm p-6 flex flex-col h-full"><div className="flex justify-between mb-6"><h2 className="font-bold">কার্ট ({cart.length})</h2><button onClick={()=>setShowCart(false)} className="text-xl">✕</button></div><div className="flex-1 overflow-auto">{cart.length===0 ? <p className="text-sm text-gray-500">কার্ট খালি</p> : cart.map((p,i)=><div key={i} className="flex justify-between py-3 border-b text-sm"><span>{lang==='bn'?p.bn:p.en}</span><span className="font-bold">{p.price}৳</span></div>)}</div>{cart.length>0 && <><div className="border-t pt-4 mt-4 flex justify-between font-black"><span>মোট:</span><span>{cart.reduce((s,p)=>s+p.price,0)}৳</span></div><button onClick={()=>{ let msg=`Order:%0A`; cart.forEach((p:any,i:number)=>{ msg+=`${i+1}. ${lang==='bn'?p.bn:p.en} - ${p.price}৳%0A`; }); window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${msg}`,'_blank'); }} className="bg-black text-white rounded-full py-4 mt-4 font-bold">WhatsApp এ অর্ডার করুন</button></>}</div></div>)}
     </div>
   );
