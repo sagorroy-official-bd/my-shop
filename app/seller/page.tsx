@@ -10,29 +10,33 @@ export default function SellerPage() {
   const [editId, setEditId] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    const saved = localStorage.getItem("gausia_products");
-    if (saved) setProducts(JSON.parse(saved));
-    const logged = localStorage.getItem("gausia_seller_logged");
-    if (logged) setLoggedShop(JSON.parse(logged));
+    try {
+      const saved = localStorage.getItem("gausia_products");
+      if (saved) setProducts(JSON.parse(saved));
+      const logged = localStorage.getItem("gausia_seller_logged");
+      if (logged) setLoggedShop(JSON.parse(logged));
+    } catch(e){ localStorage.clear(); }
   }, []);
   const saveProducts = (newProds: any[]) => { setProducts(newProds); localStorage.setItem("gausia_products", JSON.stringify(newProds)); };
-  const getSellers = () => { const s = localStorage.getItem("gausia_sellers"); return s ? JSON.parse(s) : []; };
+  const getSellers = () => { try{ const s = localStorage.getItem("gausia_sellers"); return s ? JSON.parse(s) : []; } catch{ return []; } };
   const handlePhoneLogin = () => {
-    if (phone.length < 11) return alert("সঠিক ১১ ডিজিটের ফোন নাম্বার দিন - যেমন 01712345678");
+    const cleanPhone = phone.trim();
+    if (cleanPhone.length < 11) { alert("সঠিক ১১ ডিজিটের ফোন নাম্বার দিন"); return; }
     const sellers = getSellers();
-    const existing = sellers.find((s: any) => s.phone === phone);
+    const existing = sellers.find((s: any) => s.phone === cleanPhone);
     if (existing) {
       setLoggedShop(existing);
       localStorage.setItem("gausia_seller_logged", JSON.stringify(existing));
+      alert(`স্বাগতম ${existing.name}!`);
     } else {
       setIsNew(true);
     }
   };
   const handleRegister = () => {
-    if (!regForm.shopName || !regForm.address) return alert("দোকানের নাম ও ঠিকানা দিন");
+    if (!regForm.shopName || !regForm.address) { alert("দোকানের নাম ও ঠিকানা দিন"); return; }
     const sellers = getSellers();
     const code = `SHOP-${String(sellers.length + 1).padStart(2, "0")}`;
-    const newSeller = { phone, code, name: regForm.shopName, address: `${regForm.floor}, ${regForm.address}`, fullAddress: regForm.address, floor: regForm.floor, createdAt: new Date().toLocaleString("bn-BD"), };
+    const newSeller = { phone: phone.trim(), code, name: regForm.shopName, address: `${regForm.floor}, ${regForm.address}`, fullAddress: regForm.address, floor: regForm.floor, createdAt: new Date().toLocaleString("bn-BD"), };
     const newSellers = [...sellers, newSeller];
     localStorage.setItem("gausia_sellers", JSON.stringify(newSellers));
     localStorage.setItem("gausia_seller_logged", JSON.stringify(newSeller));
@@ -42,7 +46,7 @@ export default function SellerPage() {
   const handleLogout = () => { setLoggedShop(null); localStorage.removeItem("gausia_seller_logged"); setPhone(""); setIsNew(false); };
   const handleFile = (e: any) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (ev: any) => { setForm({ ...form, img: ev.target.result }); }; reader.readAsDataURL(file); };
   const handleAdd = () => {
-    if (!form.name || !form.price) return alert("নাম ও দাম দিন");
+    if (!form.name || !form.price) { alert("নাম ও দাম দিন"); return; }
     if (editId !== null) { const updated = products.map(p => p.id === editId ? { ...p, name: form.name, cat: form.cat, price: parseInt(form.price), quality: form.quality, img: form.img || p.img } : p); saveProducts(updated); setEditId(null); setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" }); if(fileRef.current) fileRef.current.value = ""; alert("✅ এডিট সফল!"); return; }
     const count = products.filter(p => p.shopCode === loggedShop.code).length + 1;
     const code = `${loggedShop.code}-${String(count).padStart(3, "0")}`;
@@ -57,12 +61,12 @@ export default function SellerPage() {
       return (
         <div className="min-h-screen bg-[#fff8f0] flex items-center justify-center p-4">
           <div className="bg-white rounded-[24px] border shadow-xl p-6 w-full max-w-sm">
-            <div className="text-center"><div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center text-white font-black text-xl" style={{background:"linear-gradient(135deg,#ff6a00,#ee0979)"}}>G</div><h1 className="font-black text-lg mt-3">নতুন দোকান রেজিস্ট্রেশন</h1><p className="text-xs text-gray-500 mt-1">ফোন: {phone}</p></div>
-            <input value={regForm.shopName} onChange={e=>setRegForm({...regForm, shopName: e.target.value})} placeholder="দোকানের নাম" className="w-full mt-5 border rounded-xl px-4 py-3 text-sm font-bold" />
+            <div className="text-center"><div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center text-white font-black text-xl" style={{background:"linear-gradient(135deg,#ff6a00,#ee0979)"}}>G</div><h1 className="font-black text-lg mt-3">নতুন দোকান রেজিস্ট্রেশন</h1><p className="text-xs bg-gray-100 rounded-full px-3 py-1 mt-2 inline-block">📞 {phone}</p></div>
+            <input value={regForm.shopName} onChange={e=>setRegForm({...regForm, shopName: e.target.value})} placeholder="দোকানের নাম: যেমন মা ফ্যাশন" className="w-full mt-5 border rounded-xl px-4 py-3 text-sm font-bold" />
             <select value={regForm.floor} onChange={e=>setRegForm({...regForm, floor: e.target.value})} className="w-full mt-3 border rounded-xl px-4 py-3 text-sm"><option>১ম তলা</option><option>২য় তলা</option><option>৩য় তলা</option><option>৪র্থ তলা</option><option>৫ম তলা</option></select>
-            <input value={regForm.address} onChange={e=>setRegForm({...regForm, address: e.target.value})} placeholder="দোকান নং, গাউছিয়া মার্কেট" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
-            <button onClick={handleRegister} className="w-full mt-4 bg-black text-white rounded-full py-3 font-black text-sm">রেজিস্ট্রেশন সম্পন্ন করুন</button>
-            <button onClick={()=>setIsNew(false)} className="w-full mt-2 text-xs text-gray-500">← ফিরে যান</button>
+            <input value={regForm.address} onChange={e=>setRegForm({...regForm, address: e.target.value})} placeholder="দোকান নং: যেমন ১২৩ নং, গাউছিয়া" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
+            <button onClick={handleRegister} className="w-full mt-4 bg-black text-white rounded-full py-3 font-black text-sm">✅ রেজিস্ট্রেশন সম্পন্ন করুন</button>
+            <button onClick={()=>{setIsNew(false); setPhone("");}} className="w-full mt-2 text-xs text-gray-500">← ফিরে যান</button>
           </div>
         </div>
       );
@@ -74,8 +78,8 @@ export default function SellerPage() {
           <h1 className="font-black text-xl mt-3">দোকানদার লগইন</h1>
           <p className="text-xs text-gray-500 mt-1">ফোন নাম্বার দিয়ে লগইন করুন</p>
           <input value={phone} onChange={e=>setPhone(e.target.value)} type="tel" placeholder="যেমন: 01712345678" className="w-full mt-5 border rounded-full px-4 py-3 text-sm font-bold text-center tracking-widest" />
-          <button onClick={handlePhoneLogin} className="w-full mt-3 bg-black text-white rounded-full py-3 font-black text-sm">লগইন করুন</button>
-          <p className="text-[11px] text-gray-400 mt-3">নতুন হলে দোকানের ঠিকানা চাইবে</p>
+          <button onClick={handlePhoneLogin} className="w-full mt-3 bg-black text-white rounded-full py-3 font-black text-sm">লগইন / রেজিস্টার</button>
+          <p className="text-[11px] text-gray-400 mt-3">নতুন হলে দোকানের ঠিকানা ফর্ম আসবে</p>
         </div>
       </div>
     );
