@@ -30,12 +30,7 @@ export default function SellerPage() {
     if (cleanPhone.length < 11) { alert("সঠিক ১১ ডিজিটের ফোন নাম্বার দিন"); return; }
     const sellers = getSellers();
     const existing = sellers.find((s: any) => s.phone === cleanPhone);
-    if (existing) {
-      setLoggedShop(existing);
-      localStorage.setItem("gausia_seller_logged", JSON.stringify(existing));
-    } else {
-      setIsNew(true);
-    }
+    if (existing) { setLoggedShop(existing); localStorage.setItem("gausia_seller_logged", JSON.stringify(existing)); } else { setIsNew(true); }
   };
 
   const handleRegister = () => {
@@ -76,16 +71,28 @@ export default function SellerPage() {
     if (!form.name || !form.price) { alert("নাম ও দাম দিন"); return; }
     if (editId !== null) { 
       const updated = products.map(p => p.id === editId ? { ...p, name: form.name, cat: form.cat, price: parseInt(form.price), img: form.img || p.img } : p); 
-      saveProducts(updated); setEditId(null); setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" }); if(fileRef.current) fileRef.current.value = ""; alert("✅ এডিট সফল! আসল দাম রেকর্ডে থাকবে!"); return; 
+      saveProducts(updated); setEditId(null); setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" }); if(fileRef.current) fileRef.current.value = ""; alert("✅ এডিট সফল!"); return; 
     }
     const count = products.filter(p => p.shopCode === loggedShop.code).length + 1;
     const code = `${loggedShop.code}-${String(count).padStart(3, "0")}`;
     const priceInt = parseInt(form.price);
-    const newProduct = { id: Date.now(), code, name: form.name, cat: form.cat, shopCode: loggedShop.code, shopName: loggedShop.name, shopPhone: loggedShop.phone, shopAddress: loggedShop.address, price: priceInt, originalPrice: priceInt, quality: form.quality, img: form.img || `https://picsum.photos/seed/${code}/400/400` };
-    saveProducts([...products, newProduct]); setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" }); if(fileRef.current) fileRef.current.value = ""; alert(`${code} সফলভাবে আপলোড হয়েছে! আসল দাম ${priceInt}৳ সেভ হয়েছে!`);
+    const newProduct = { id: Date.now(), code, name: form.name, cat: form.cat, shopCode: loggedShop.code, shopName: loggedShop.name, shopPhone: loggedShop.phone, shopAddress: loggedShop.address, price: priceInt, originalPrice: priceInt, quality: form.quality, img: form.img || `https://picsum.photos/seed/${code}/400/400`, createdAt: new Date().toLocaleString("bn-BD") };
+    saveProducts([...products, newProduct]); setForm({ name: "", cat: "Women", price: "", quality: "positive", img: "" }); if(fileRef.current) fileRef.current.value = ""; alert(`${code} সফলভাবে আপলোড হয়েছে!`);
   };
 
-  const handleDelete = (id: number) => { if(!confirm("ডিলিট করতে চান?")) return; saveProducts(products.filter(p => p.id !== id)); };
+  const handleDelete = (id: number) => {
+    const prod = products.find(p=>p.id===id);
+    if(!prod) return;
+    if(!confirm(`${prod.name} (${prod.code}) ডিলিট করবেন? এটা অ্যাডমিন রিপোর্টে জমা হবে!`)) return;
+    // ১. ডিলিট রিপোর্টে জমা করুন
+    const deleted = JSON.parse(localStorage.getItem("gausia_deleted")||"[]");
+    const deletedItem = { ...prod, deletedAt: new Date().toLocaleString("bn-BD"), deletedBy: loggedShop.name };
+    localStorage.setItem("gausia_deleted", JSON.stringify([...deleted, deletedItem]));
+    // ২. মেইন লিস্ট থেকে সরান
+    saveProducts(products.filter(p => p.id !== id));
+    alert("🗑️ ডিলিট হয়েছে এবং অ্যাডমিন রিপোর্টে জমা হয়েছে!");
+  };
+
   const handleEdit = (p: any) => { setEditId(p.id); setForm({ name: p.name, cat: p.cat, price: String(p.price), quality: p.quality, img: p.img }); window.scrollTo({top: 0, behavior: 'smooth'}); };
   const myProducts = products.filter(p => loggedShop && p.shopCode === loggedShop.code);
 
@@ -109,8 +116,7 @@ export default function SellerPage() {
         <div className="bg-white rounded-[24px] border shadow-xl p-8 w-full max-w-sm text-center">
           <div className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center text-white font-black text-xl" style={{background:"linear-gradient(135deg,#ff6a00,#ee0979)"}}>G</div>
           <h1 className="font-black text-xl mt-3">দোকানদার লগইন</h1>
-          <p className="text-xs text-gray-500 mt-1">ফোন নাম্বার দিয়ে লগইন করুন</p>
-          <input value={phone} onChange={e=>setPhone(e.target.value)} type="tel" placeholder="যেমন: 01712345678" className="w-full mt-5 border rounded-full px-4 py-3 text-sm font-bold text-center tracking-widest" />
+          <input value={phone} onChange={e=>setPhone(e.target.value)} type="tel" placeholder="01712345678" className="w-full mt-5 border rounded-full px-4 py-3 text-sm font-bold text-center tracking-widest" />
           <button onClick={handlePhoneLogin} className="w-full mt-3 bg-black text-white rounded-full py-3 font-black text-sm">লগইন / রেজিস্টার</button>
         </div>
       </div>
@@ -121,49 +127,40 @@ export default function SellerPage() {
     <div className="min-h-screen bg-[#fff8f0]">
       <header className="bg-white border-b sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex gap-2 items-center"><div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center font-black">G</div><div><div className="font-black text-sm flex items-center gap-2">{loggedShop.name} <button onClick={startEditShop} className="w-6 h-6 bg-orange-100 border border-orange-200 rounded-full text-[10px]">✏️</button></div><div className="text-[10px] text-gray-600">{loggedShop.code} | {loggedShop.address}</div><div className="text-[10px]">📞 {loggedShop.phone}</div></div></div>
+          <div className="flex gap-2 items-center"><div className="w-9 h-9 rounded-xl bg-black text-white flex items-center justify-center font-black">G</div><div><div className="font-black text-sm flex items-center gap-2">{loggedShop.name} <button onClick={startEditShop} className="w-6 h-6 bg-orange-100 border border-orange-200 rounded-full text-[10px]">✏️</button></div><div className="text-[10px] text-gray-600">{loggedShop.code} | {loggedShop.address}</div></div></div>
           <button onClick={handleLogout} className="text-xs bg-black text-white px-4 py-2 rounded-full font-bold">লগআউট</button>
         </div>
       </header>
-
       {isEditingShop && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-[100]">
           <div className="bg-white rounded-[20px] p-6 w-full max-w-sm shadow-2xl border-2">
-            <h2 className="font-black text-lg">✏️ ঠিকানা সংশোধন করুন</h2>
-            <p className="text-xs text-gray-500 mt-1">ভুল হলে এখান থেকে ঠিক করুন</p>
-            <input value={editShopForm.shopName} onChange={e=>setEditShopForm({...editShopForm, shopName: e.target.value})} placeholder="দোকানের নাম" className="w-full mt-4 border rounded-xl px-4 py-3 text-sm font-bold" />
+            <h2 className="font-black text-lg">✏️ ঠিকানা সংশোধন</h2>
+            <input value={editShopForm.shopName} onChange={e=>setEditShopForm({...editShopForm, shopName: e.target.value})} className="w-full mt-4 border rounded-xl px-4 py-3 text-sm font-bold" />
             <select value={editShopForm.floor} onChange={e=>setEditShopForm({...editShopForm, floor: e.target.value})} className="w-full mt-3 border rounded-xl px-4 py-3 text-sm"><option>১ম তলা</option><option>২য় তলা</option><option>৩য় তলা</option><option>৪র্থ তলা</option><option>৫ম তলা</option></select>
-            <input value={editShopForm.address} onChange={e=>setEditShopForm({...editShopForm, address: e.target.value})} placeholder="দোকান নং, গাউছিয়া মার্কেট" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
+            <input value={editShopForm.address} onChange={e=>setEditShopForm({...editShopForm, address: e.target.value})} className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
             <div className="grid grid-cols-2 gap-2 mt-4">
               <button onClick={()=>setIsEditingShop(false)} className="bg-gray-100 rounded-full py-3 font-bold text-sm">বাতিল</button>
-              <button onClick={saveEditShop} className="bg-black text-white rounded-full py-3 font-bold text-sm">✅ সেভ করুন</button>
+              <button onClick={saveEditShop} className="bg-black text-white rounded-full py-3 font-bold text-sm">✅ সেভ</button>
             </div>
           </div>
         </div>
       )}
-
       <main className="max-w-5xl mx-auto px-4 py-5 grid md:grid-cols-2 gap-5">
         <div className="bg-white rounded-[20px] border p-5 shadow-sm h-fit">
           <h2 className="font-black">{editId ? "✏️ এডিট করুন" : `নতুন পণ্য আপলোড`}</h2>
-          <p className="text-xs text-gray-500 mt-1">কোড: {loggedShop.code}-{(myProducts.length+1).toString().padStart(3,"0")} | আসল দাম সেভ হবে</p>
           <input value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="পণ্যের নাম" className="w-full mt-4 border rounded-xl px-4 py-3 text-sm" />
           <div className="grid grid-cols-2 gap-2 mt-3">
             <select value={form.cat} onChange={e=>setForm({...form,cat:e.target.value})} className="border rounded-xl px-3 py-3 text-sm"><option value="Women">👩 মহিলা</option><option value="Men">👨 পুরুষ</option><option value="Girls">👧 মেয়ে</option><option value="Boys">👦 ছেলে</option><option value="Baby">👶 বেবি</option></select>
             <select value={form.quality} onChange={e=>setForm({...form,quality:e.target.value})} className="border rounded-xl px-3 py-3 text-sm"><option value="positive">✅ পজিটিভ</option><option value="negative">⚠️ নেগেটিভ</option></select>
           </div>
-          <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" placeholder="দাম (আসল দাম হিসেবে সেভ হবে)" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
+          <input value={form.price} onChange={e=>setForm({...form,price:e.target.value})} type="number" placeholder="দাম" className="w-full mt-3 border rounded-xl px-4 py-3 text-sm" />
           <input ref={fileRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
-          <button onClick={()=>fileRef.current?.click()} className="w-full mt-3 border-2 border-dashed rounded-xl px-4 py-4 text-sm font-bold bg-gray-50">{form.img ? "✅ ছবি সিলেক্ট হয়েছে" : "📁 গ্যালারি থেকে ছবি বাছাই করুন"}</button>
+          <button onClick={()=>fileRef.current?.click()} className="w-full mt-3 border-2 border-dashed rounded-xl px-4 py-4 text-sm font-bold bg-gray-50">{form.img ? "✅ ছবি সিলেক্ট হয়েছে" : "📁 গ্যালারি থেকে ছবি"}</button>
           {form.img && <img src={form.img} className="w-full h-32 object-cover rounded-xl mt-3 border" alt="preview"/>}
-          <button onClick={handleAdd} className="w-full mt-4 bg-black text-white rounded-full py-3 font-black text-sm">{editId ? "✅ আপডেট করুন" : `আপলোড করুন`}</button>
+          <button onClick={handleAdd} className="w-full mt-4 bg-black text-white rounded-full py-3 font-black text-sm">{editId ? "✅ আপডেট" : `আপলোড`}</button>
         </div>
         <div>
-          <div className="bg-white border-2 border-orange-100 rounded-xl p-3 text-[11px] relative"> 
-            <button onClick={startEditShop} className="absolute top-2 right-2 w-7 h-7 bg-black text-white rounded-full text-[10px]">✏️</button>
-            <b>দোকান:</b> {loggedShop.name}<br/><b>ঠিকানা:</b> {loggedShop.address}<br/><b>ফোন:</b> {loggedShop.phone}
-            <div className="text-[10px] text-orange-600 mt-2 font-bold">👆 ভুল হলে ✏️ চেপে ঠিক করুন</div>
-          </div>
-          <h2 className="font-black mt-3">আমার আপলোড ({myProducts.length} টি)</h2>
+          <h2 className="font-black">আমার আপলোড ({myProducts.length} টি)</h2>
           <div className="grid grid-cols-2 gap-3 mt-3">
             {myProducts.map((p:any)=>(
               <div key={p.id} className="bg-white rounded-[18px] border overflow-hidden relative">
@@ -172,7 +169,7 @@ export default function SellerPage() {
                   <button onClick={()=>handleEdit(p)} className="bg-white shadow w-7 h-7 rounded-full text-[10px]">✏️</button>
                   <button onClick={()=>handleDelete(p.id)} className="bg-red-500 text-white shadow w-7 h-7 rounded-full text-[10px]">🗑️</button>
                 </div>
-                <div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="font-black text-sm mt-1">{p.price}৳ <span className="text-[9px] text-gray-400 font-normal">আসল: {p.originalPrice || p.price}৳</span></div></div>
+                <div className="p-2.5"><div className="text-[10px] font-mono bg-gray-100 px-2 rounded-full inline-block">{p.code}</div><div className="font-bold text-xs mt-1">{p.name}</div><div className="font-black text-sm mt-1">{p.price}৳</div></div>
               </div>
             ))}
           </div>
