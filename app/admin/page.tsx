@@ -1,45 +1,133 @@
 "use client";
 import { useState, useEffect } from "react";
-export default function Admin(){
-  const [passOk,setPassOk]=useState(false); const [pass,setPass]=useState(""); const [pending,setPending]=useState<any[]>([]); const [records,setRecords]=useState<any[]>([]); const [edited,setEdited]=useState<any[]>([]); const [shops,setShops]=useState<string[]>([]); const [newShop,setNewShop]=useState(""); const [tab,setTab]=useState<"edit"|"shops"|"records"|"inbox">("edit"); const [editItem,setEditItem]=useState<any>(null); const [preview,setPreview]=useState<any>(null);
-  useEffect(()=>{ if(localStorage.getItem("gausia_admin_ok")==="yes") setPassOk(true); const s=JSON.parse(localStorage.getItem("gausia_all_shops")||'["SHOP-01","SHOP-02","SHOP-03","SHOP-04","SHOP-05","SHOP-06","SHOP-07","SHOP-08","SHOP-09","SHOP-10","SHOP-11","SHOP-12","SHOP-13"]'); if(s.length>20){ const f=s.slice(0,13); setShops(f); localStorage.setItem("gausia_all_shops",JSON.stringify(f)); } else setShops(s); setPending(JSON.parse(localStorage.getItem("gausia_seller_pending")||"[]")); setRecords(JSON.parse(localStorage.getItem("gausia_seller_records")||"[]")); setEdited(JSON.parse(localStorage.getItem("gausia_admin_edited")||"[]")); },[]);
-  const saveShops=(up:string[])=>{ setShops(up); localStorage.setItem("gausia_all_shops",JSON.stringify(up)); };
-  const moveToEdit=(item:any)=>{ const n={editId:Date.now(),...item,editedTitle:item.title,editedPrice:String(item.price),editedComment:item.comment||"",editedImages:item.images||[item.image],editedShop:item.shop,originalPrice:String(item.price),discountPercent:"15",offerPrice:"1275",offerTitle:"Eid Dhamaka Offer, Buy 1 Get 1, Free Delivery",badge:"New",size:"L",color:"Lal",deliveryCharge:"60",stock:"In Stock",quantity:item.quantity||"1",extraDesc:"100% Cotton, Washable, 7 Days Return, Best Quality, Gausia Market etc.",freeDelivery:false}; const up=[n,...edited]; setEdited(up); localStorage.setItem("gausia_admin_edited",JSON.stringify(up)); setEditItem(n); setTab("edit"); };
-  const handleSave=()=>{ if(!editItem) return; const up=edited.map((e:any)=>e.editId===editItem.editId?editItem:e); if(!up.find((e:any)=>e.editId===editItem.editId)) up.unshift(editItem); setEdited(up); localStorage.setItem("gausia_admin_edited",JSON.stringify(up)); alert("✅ Save Edit হয়েছে!"); };
-  const handleCancel=()=>{ setEditItem(null); setPreview(null); };
-  const sendNormal=(it:any)=>{ const all=JSON.parse(localStorage.getItem("gausia_all_products")||"[]"); const f={id:Date.now(),shop:it.editedShop,title:it.editedTitle,price:parseInt(it.offerPrice),originalPrice:parseInt(it.originalPrice),image:it.editedImages[0],images:it.editedImages,offerTitle:it.offerTitle,discountPercent:it.discountPercent?parseInt(it.discountPercent):0,badge:it.badge,quantity:it.quantity,size:it.size,color:it.color,stock:it.stock,extraDesc:it.extraDesc,deliveryCharge:it.freeDelivery?0:parseInt(it.deliveryCharge),freeDelivery:it.freeDelivery,type:"normal"}; localStorage.setItem("gausia_all_products",JSON.stringify([f,...all])); alert("✅ Normal - "+f.shop+" দোকানে জমা হলো"); };
-  const sendSpecial=(it:any)=>{ const banners=JSON.parse(localStorage.getItem("gausia_special_banners")||"[]"); const f={id:Date.now(),shop:it.editedShop,title:it.editedTitle,price:parseInt(it.offerPrice),originalPrice:parseInt(it.originalPrice),image:it.editedImages[0],images:it.editedImages,offerTitle:it.offerTitle||"Special Offer",discountPercent:it.discountPercent?parseInt(it.discountPercent):0,badge:it.badge,quantity:it.quantity,type:"special"}; localStorage.setItem("gausia_special_banners",JSON.stringify([f,...banners].slice(0,10))); const all=JSON.parse(localStorage.getItem("gausia_all_products")||"[]"); localStorage.setItem("gausia_all_products",JSON.stringify([f,...all])); alert("🔥 Special - Customer Display তে গেলো - মার্কেটিং"); };
-  if(!passOk) return(<div className="min-h-screen bg-black flex items-center justify-center p-4"><div className="bg-white rounded-[20px] p-6 w-full max-w-sm border-2 border-black"><div className="font-black">🔒 ADMIN</div><input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="1234" className="w-full mt-4 border-2 border-black rounded-full px-4 py-3"/><button onClick={()=>{ if(pass==="1234"){ localStorage.setItem("gausia_admin_ok","yes"); setPassOk(true);} }} className="w-full mt-3 bg-black text-white py-3 rounded-full font-black">Login</button></div></div>);
-  return(<div className="min-h-screen bg-white p-3"><div className="max-w-5xl mx-auto">
-    <div className="flex gap-1.5 justify-end mb-3"><button onClick={()=>setTab("shops")} className={`px-3 py-1.5 rounded-full text-xs font-black border-2 border-black ${tab==="shops"?"bg-blue-400":"bg-white"}`}>🏪 দোকান নিয়ন্ত্রণ ({shops.length})</button><button onClick={()=>setTab("records")} className={`px-3 py-1.5 rounded-full text-xs font-black border-2 border-black ${tab==="records"?"bg-purple-400":"bg-white"}`}>📚 রেকর্ড ({records.length})</button><button onClick={()=>setTab("inbox")} className={`px-3 py-1.5 rounded-full text-xs font-black border-2 border-black ${tab==="inbox"?"bg-yellow-400":"bg-white"}`}>Inbox ({pending.length})</button><button onClick={()=>setTab("edit")} className={`px-3 py-1.5 rounded-full text-xs font-black border-2 border-black ${tab==="edit"?"bg-emerald-400":"bg-white"}`}>Edit ({edited.length})</button></div>
+export default function AdminPage(){
+  const [passOk,setPassOk]=useState(false); const [pass,setPass]=useState("");
+  const [sellerRecords,setSellerRecords]=useState<any[]>([]); // সেলার অংশ সংরক্ষিত
+  const [adminEdited,setAdminEdited]=useState<any[]>([]); // এডমিন অংশ সংরক্ষিত
+  const [shops,setShops]=useState<string[]>([]);
+  const [active,setActive]=useState<"seller"|"admin">("admin"); // এই পেজে ২টাই থাকবে
+  const [editItem,setEditItem]=useState<any>(null);
 
-    {tab==="shops"&&<div className="bg-white border-2 border-black rounded-[16px] p-4"><div className="font-black text-sm">🏪 দোকানের নাম Admin থেকে নিয়ন্ত্রণ - যে নামে পাঠাবেন ওই দোকানের অধীনেই পণ্য থাকবে</div><div className="flex gap-2 mt-3"><input value={newShop} onChange={e=>setNewShop(e.target.value)} placeholder="নতুন দোকানের নাম, যেমন গাউছিয়া ফ্যাশন" className="flex-1 border border-gray-300 rounded-full px-4 py-2.5 text-sm"/><button onClick={()=>{ if(newShop.trim()){ saveShops([...shops,newShop.trim()]); setNewShop(""); } }} className="bg-black text-white px-5 rounded-full text-sm font-black">+ Add</button></div><div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">{shops.map(s=><div key={s} className="border border-gray-300 rounded-full px-4 py-2 flex justify-between items-center text-sm"><span>{s}</span><button onClick={()=>saveShops(shops.filter(x=>x!==s))} className="bg-red-500 text-white w-5 h-5 rounded-full text-xs">X</button></div>)}</div></div>}
+  useEffect(()=>{
+    if(typeof window==="undefined") return;
+    if(localStorage.getItem("gausia_admin_ok")==="yes") setPassOk(true);
+    const s=JSON.parse(localStorage.getItem("gausia_all_shops")||'["SHOP-01","SHOP-02","SHOP-03","SHOP-04","SHOP-05","SHOP-06","SHOP-07","SHOP-08","SHOP-09","SHOP-10","SHOP-11","SHOP-12","SHOP-13"]');
+    setShops(s);
+    setSellerRecords(JSON.parse(localStorage.getItem("gausia_seller_records")||localStorage.getItem("gausia_seller_pending")||"[]"));
+    setAdminEdited(JSON.parse(localStorage.getItem("gausia_admin_edited")||"[]"));
+  },[]);
 
-    {tab==="records"&&<div className="grid md:grid-cols-3 gap-2">{records.map((r:any,i:number)=><div key={i} className="bg-white border border-gray-300 rounded-[12px] p-2"><div className="text-xs font-bold">{r.shop} - {r.title}</div><img src={r.images[0]} className="w-full h-20 object-cover mt-1 rounded"/><button onClick={()=>moveToEdit(r)} className="w-full mt-1 bg-black text-white rounded-full py-1 text-xs">Edit</button></div>)}</div>}
+  const saveEdited=(up:any[])=>{ setAdminEdited(up); localStorage.setItem("gausia_admin_edited",JSON.stringify(up)); };
+  const saveSeller=(up:any[])=>{ setSellerRecords(up); localStorage.setItem("gausia_seller_records",JSON.stringify(up)); localStorage.setItem("gausia_seller_pending",JSON.stringify(up)); };
 
-    {tab==="inbox"&&<div className="grid md:grid-cols-3 gap-2">{pending.map((p:any,i:number)=><div key={i} className="bg-white border border-gray-300 rounded-[12px] p-2"><div className="text-xs font-bold">{p.shop} - {p.title}</div><img src={p.images[0]} className="w-full h-20 object-cover mt-1 rounded"/><button onClick={()=>moveToEdit(p)} className="w-full mt-1 bg-black text-white rounded-full py-1 text-xs">Edit এ নিন</button></div>)}</div>}
+  // সেলার থেকে এডমিনে আনা - রেকর্ড থেকে যাবে
+  const moveSellerToAdmin=(item:any)=>{
+    const n={editId:Date.now(),shop:item.shop,shopName:item.shopName,address:item.address,phone:item.phone,title:item.title,editedTitle:item.title,editedPrice:String(item.price),originalPrice:String(item.price),discountPercent:"25",offerPrice:String(Math.round(parseInt(item.price)*(0.85))),offerTitle:"Eid Dhamaka Offer, Buy 1 Get 1, Free Delivery",editedComment:item.comment||"Ind",editedImages:item.images||[item.image],editedShop:item.shop,badge:"New",size:"L",color:"Lal",deliveryCharge:"60",stock:"In Stock",quantity:item.quantity||"1",extraDesc:"100% Cotton, Washable, 7 Days Return, Best Quality, Gausia Market etc.",freeDelivery:false};
+    const up=[n,...adminEdited]; saveEdited(up); setEditItem(n); setActive("admin"); window.scrollTo(0,0);
+  };
 
-    {tab==="edit"&&<div>
-      {editItem&&<div className="bg-white border-2 border-gray-800 rounded-[16px] p-3">
-        {/* আপনার ছবির মতো হুবহু ডিজাইন */}
-        <div className="grid grid-cols-2 gap-2"><input value={editItem.editedTitle} onChange={e=>setEditItem({...editItem,editedTitle:e.target.value})} className="border border-gray-300 rounded-full px-4 py-2 text-sm"/><input value={editItem.badge} onChange={e=>setEditItem({...editItem,badge:e.target.value})} placeholder="New টাইপ করুন" className="border border-gray-300 rounded-full px-4 py-2 text-sm"/></div>
-        <div className="mt-2"><div className="text-[11px]">💰 আগের ও ডিসকাউন্ট</div><div className="grid grid-cols-3 gap-2 mt-1"><input value={editItem.originalPrice} onChange={e=>setEditItem({...editItem,originalPrice:e.target.value})} type="number" placeholder="1500" className="border border-gray-300 rounded-full px-4 py-2 text-sm"/><input value={editItem.discountPercent} onChange={e=>setEditItem({...editItem,discountPercent:e.target.value})} type="number" placeholder="15" className="border border-gray-300 rounded-full px-4 py-2 text-sm"/><input value={editItem.offerPrice} onChange={e=>setEditItem({...editItem,offerPrice:e.target.value})} type="number" placeholder="1275" className="border border-gray-300 rounded-full px-4 py-2 text-sm bg-green-50 font-bold"/></div></div>
-        <input value={editItem.offerTitle} onChange={e=>setEditItem({...editItem,offerTitle:e.target.value})} placeholder="অফার টাইটেল: Eid Dhamaka Offer, Buy 1 Get 1, Free Delivery" className="w-full mt-2 border border-gray-300 rounded-full px-4 py-2 text-sm bg-yellow-50"/>
-        <div className="text-[10px] mt-1 text-gray-500">Original {editItem.originalPrice}৳ - {editItem.discountPercent}% = Offer {editItem.offerPrice}৳ - Customer এ যেমন দেখাবে তেমন</div>
-        <div className="grid grid-cols-2 gap-2 mt-3"><input value={editItem.size} onChange={e=>setEditItem({...editItem,size:e.target.value})} placeholder="L - সাইজ টাইপ" className="border border-gray-300 rounded-full px-4 py-2 text-sm"/><input value={editItem.color} onChange={e=>setEditItem({...editItem,color:e.target.value})} placeholder="Lal - কালার টাইপ" className="border border-gray-300 rounded-full px-4 py-2 text-sm"/></div>
-        <div className="grid grid-cols-2 gap-2 mt-2"><input value={editItem.deliveryCharge} onChange={e=>setEditItem({...editItem,deliveryCharge:e.target.value})} type="number" placeholder="60 - ডেলিভারি টাইপ" className="border border-gray-300 rounded-full px-4 py-2 text-sm"/><select value={editItem.stock} onChange={e=>setEditItem({...editItem,stock:e.target.value})} className="border border-gray-300 rounded-full px-4 py-2 text-sm"><option>In Stock</option><option>Stock Out</option><option>Limited Stock</option><option>Pre Order</option></select></div>
-        {/* নতুন এড: পরিমাণ + দোকান - আপনার ছবির ডিজাইনেই */}
-        <div className="grid grid-cols-2 gap-2 mt-2"><input value={editItem.quantity} onChange={e=>setEditItem({...editItem,quantity:e.target.value})} type="number" placeholder="পরিমাণ - 1 পিস টাইপ" className="border-2 border-blue-300 rounded-full px-4 py-2 text-sm bg-blue-50 font-black"/><select value={editItem.editedShop} onChange={e=>setEditItem({...editItem,editedShop:e.target.value})} className="border-2 border-yellow-400 rounded-full px-4 py-2 text-sm font-black bg-yellow-50"><option value="">🏪 দোকান সিলেক্ট - যে দোকানে যাবে</option>{shops.map(s=><option key={s} value={s}>🏪 {s} অধীনে</option>)}</select></div>
-        <div className="mt-2 flex items-center gap-2"><input type="checkbox" checked={editItem.freeDelivery} onChange={e=>setEditItem({...editItem,freeDelivery:e.target.checked})}/><span className="text-xs">🚚 ফ্রি ডেলিভারি</span></div>
-        <textarea value={editItem.extraDesc} onChange={e=>setEditItem({...editItem,extraDesc:e.target.value})} placeholder="বিবরণ: 100% Cotton, Washable, 7 Days Return, Best Quality, Gausia Market etc." className="w-full mt-2 border border-gray-300 rounded-[16px] px-4 py-3 text-sm h-16"></textarea>
-        <input value={editItem.editedComment} onChange={e=>setEditItem({...editItem,editedComment:e.target.value})} placeholder="Ind" className="w-full mt-2 border border-gray-300 rounded-full px-4 py-2 text-sm"/>
-        <div className="flex gap-1.5 mt-2 flex-wrap">{editItem.editedImages?.map((im:string,k:number)=><div key={k} className="relative"><img src={im} className="w-12 h-12 rounded border object-cover"/><button onClick={()=>setEditItem({...editItem,editedImages:editItem.editedImages.filter((_:any,idx:number)=>idx!==k)})} className="absolute -top-2 -right-2 bg-red-500 text-white w-4 h-4 rounded-full text-[10px]">X</button></div>)}</div>
-        <div className="grid grid-cols-2 gap-2 mt-3"><button onClick={handleSave} className="bg-yellow-400 border border-black rounded-full py-2.5 text-sm font-bold">💾 Save Edit</button><button onClick={handleCancel} className="bg-white border border-black rounded-full py-2.5 text-sm font-bold">Cancel</button></div>
-        {/* Preview + 2 Way - আপনার ছবির নিচে এড হবে */}
-        <button onClick={()=>setPreview(editItem)} className="w-full mt-2 bg-black text-white rounded-full py-2.5 text-sm font-bold">👁️ Preview - Customer এ পাঠানোর আগে দেখুন</button>
-        {preview&&<div className="mt-3 border-2 border-dashed border-black rounded-[14px] p-3 bg-gray-50"><div className="font-black text-xs">👁️ Preview - {preview.editedShop} - {preview.quantity} পিস - Customer এ যেমন দেখাবে</div><img src={preview.editedImages[0]} className="w-full h-32 object-cover mt-2 rounded-xl border"/><div className="text-xs mt-1 font-bold">{preview.editedTitle} - {preview.offerTitle} - {preview.offerPrice}৳ - {preview.editedShop}</div><div className="grid grid-cols-2 gap-2 mt-2"><button onClick={()=>sendNormal(preview)} className="bg-black text-white rounded-full py-2.5 text-xs font-black">📦 Normal - দোকানে জমা (ক্যাটাগরি)</button><button onClick={()=>sendSpecial(preview)} className="bg-gradient-to-r from-pink-500 to-red-500 text-white rounded-full py-2.5 text-xs font-black">🔥 Special - Display তে (মার্কেটিং)</button></div></div>}
-      </div>}
-      <div className="mt-4 space-y-2">{edited.map((p:any)=><div key={p.editId} className="bg-white border border-gray-300 rounded-[12px] p-2 flex gap-2 items-center"><img src={p.editedImages[0]} className="w-12 h-12 rounded object-cover border"/><div className="flex-1"><div className="text-xs font-bold">{p.editedTitle} - {p.quantity} পিস - {p.editedShop} - {p.offerPrice}৳ {p.discountPercent&&`- ${p.discountPercent}%`} [{p.badge}]</div><div className="text-[10px] text-gray-500">{p.offerTitle}</div></div><button onClick={()=>{setEditItem(p); setPreview(null);}} className="bg-yellow-400 border border-black rounded-full px-3 py-1 text-xs font-bold">Edit</button><button onClick={()=>setPreview(p)} className="bg-black text-white rounded-full px-3 py-1 text-xs">Preview</button></div>)}</div>
-    </div>}
-  </div></div>);
+  const handleSave=()=>{
+    if(!editItem) return;
+    const up=adminEdited.map((e:any)=> e.editId===editItem.editId ? editItem : e);
+    saveEdited(up); alert("✅ Save Edit হয়েছে!"); setEditItem(null);
+  };
+  const handleCancel=()=>{ setEditItem(null); };
+
+  const handleDeleteSeller=(id:number)=>{ if(!confirm("সেলার রেকর্ড ডিলিট?")) return; saveSeller(sellerRecords.filter((e:any)=>e.id!==id)); };
+  const handleDeleteAdmin=(editId:number)=>{ if(!confirm("এডমিন এডিট ডিলিট?")) return; saveEdited(adminEdited.filter((e:any)=>e.editId!==editId)); };
+
+  const sendNormal=(item:any)=>{
+    const all=JSON.parse(localStorage.getItem("gausia_all_products")||"[]");
+    const f={id:Date.now(),shop:item.editedShop||item.shop,title:item.editedTitle||item.title,price:parseInt(item.offerPrice||item.editedPrice||item.price),originalPrice:parseInt(item.originalPrice||item.price),image:item.editedImages?.[0]||item.image,images:item.editedImages||[item.image],offerTitle:item.offerTitle,discountPercent:item.discountPercent?parseInt(item.discountPercent):0,badge:item.badge,quantity:item.quantity,type:"normal",category:item.editedShop||item.shop};
+    localStorage.setItem("gausia_all_products",JSON.stringify([f,...all]));
+    alert("✅ Normal - "+f.shop+" - ক্যাটাগরি অনুযায়ী দোকানে গেলো - "+f.category);
+  };
+  const sendSpecial=(item:any)=>{
+    const banners=JSON.parse(localStorage.getItem("gausia_special_banners")||"[]");
+    const f={id:Date.now(),shop:item.editedShop||item.shop,title:item.editedTitle||item.title,price:parseInt(item.offerPrice||item.price),originalPrice:parseInt(item.originalPrice||item.price),image:item.editedImages?.[0]||item.image,images:item.editedImages||[item.image],offerTitle:item.offerTitle||"Special Offer",discountPercent:item.discountPercent?parseInt(item.discountPercent):0,badge:item.badge,quantity:item.quantity,type:"special"};
+    localStorage.setItem("gausia_special_banners",JSON.stringify([f,...banners].slice(0,10)));
+    const all=JSON.parse(localStorage.getItem("gausia_all_products")||"[]");
+    localStorage.setItem("gausia_all_products",JSON.stringify([f,...all]));
+    alert("🔥 Special - Customer পেজের Display তে গেলো - বিভিন্ন অফার/নতুন ডিসপ্লে - মার্কেটিং");
+  };
+
+  if(!passOk) return(<div className="min-h-screen bg-black flex items-center justify-center p-4"><div className="bg-white rounded-[20px] p-6 w-full max-w-sm border-2 border-black"><div className="font-black">🔒 ADMIN - 1234</div><input value={pass} onChange={e=>setPass(e.target.value)} type="password" placeholder="Password 1234" className="w-full mt-4 border-2 border-black rounded-full px-4 py-3"/><button type="button" onClick={()=>{ if(pass==="1234"){ localStorage.setItem("gausia_admin_ok","yes"); setPassOk(true);} else alert("1234"); }} className="w-full mt-3 bg-black text-white py-3 rounded-full font-black">Login</button></div></div>);
+
+  return(
+    <div className="min-h-screen bg-[#f9f9f9] p-2 md:p-4">
+      <div className="max-w-6xl mx-auto">
+        {/* টপ ট্যাব - সেলার অংশ + এডমিন অংশ একই পেজে সংরক্ষিত */}
+        <div className="flex gap-2 justify-center mb-3">
+          <button type="button" onClick={()=>setActive("seller")} className={`px-5 py-2 rounded-full text-xs font-black border-2 border-black ${active==="seller"?"bg-yellow-400":"bg-white"}`}>📦 সেলার অংশ ({sellerRecords.length}) - সংরক্ষিত</button>
+          <button type="button" onClick={()=>setActive("admin")} className={`px-5 py-2 rounded-full text-xs font-black border-2 border-black ${active==="admin"?"bg-emerald-400":"bg-white"}`}>✏️ এডমিন অংশ ({adminEdited.length}) - সংরক্ষিত</button>
+        </div>
+
+        {/* এডিট ফর্ম - আপনার ছবির হুবহু ডিজাইন */}
+        {editItem&&active==="admin"&&(
+          <div className="bg-white border-2 border-black rounded-[16px] p-3 shadow-[3px_3px_0px_black] mb-4">
+            <div className="font-black text-xs">✏️ এডিট - দোকানের অধীনে + মার্কেটিং</div>
+            <div className="mt-2">
+              <select value={editItem.editedShop} onChange={e=>setEditItem({...editItem,editedShop:e.target.value})} className="w-full border border-gray-300 rounded-full px-4 py-2.5 text-sm bg-[#fffbe6]">
+                <option>🏪 h দোকানের অধীনে থাকবে</option>
+                {shops.map((s:string)=><option key={s} value={s}>🏪 {s} অধীনে থাকবে</option>)}
+              </select>
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <input value={editItem.originalPrice} onChange={e=>setEditItem({...editItem,originalPrice:e.target.value})} type="number" placeholder="1500" className="border border-gray-300 rounded-full px-3 py-2 text-sm"/>
+              <input value={editItem.discountPercent} onChange={e=>setEditItem({...editItem,discountPercent:e.target.value})} type="number" placeholder="% 25" className="border border-gray-300 rounded-full px-3 py-2 text-sm"/>
+              <input value={editItem.offerPrice} onChange={e=>setEditItem({...editItem,offerPrice:e.target.value})} type="number" placeholder="1500" className="border border-gray-300 rounded-full px-3 py-2 text-sm bg-green-50 font-bold"/>
+            </div>
+            <input value={editItem.offerTitle} onChange={e=>setEditItem({...editItem,offerTitle:e.target.value})} placeholder="বক্ত অফার / Eid Dhamaka / New Arrival - মার্কেটিং আকর্ষণ" className="w-full mt-2 border border-gray-300 rounded-full px-4 py-2 text-sm bg-[#fffbe6]"/>
+            <input value={editItem.editedTitle} onChange={e=>setEditItem({...editItem,editedTitle:e.target.value})} placeholder="Tree Pices" className="w-full mt-2 border border-gray-300 rounded-full px-4 py-2 text-sm"/>
+            <div className="grid grid-cols-3 gap-2 mt-2">
+              <input value={editItem.quantity} onChange={e=>setEditItem({...editItem,quantity:e.target.value})} type="number" placeholder="পরিমাণ 1" className="border-2 border-blue-300 rounded-full px-3 py-2 text-sm bg-blue-50 font-black"/>
+              <input value={editItem.badge} onChange={e=>setEditItem({...editItem,badge:e.target.value})} placeholder="New" className="border border-gray-300 rounded-full px-3 py-2 text-sm"/>
+              <input value={editItem.size} onChange={e=>setEditItem({...editItem,size:e.target.value})} placeholder="L" className="border border-gray-300 rounded-full px-3 py-2 text-sm"/>
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <button type="button" onClick={handleSave} className="bg-[#facc15] border-2 border-black rounded-full py-2.5 text-sm font-black shadow-[0_2px_0px_black]">💾 Save</button>
+              <button type="button" onClick={handleCancel} className="bg-white border-2 border-black rounded-full py-2.5 text-sm font-bold shadow-[0_2px_0px_black]">Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* সেলার অংশ - সংরক্ষিত - এডমিন চাইলে এডিট/ডিলিট করতে পারে */}
+        {active==="seller"&&(
+          <div>
+            <div className="bg-purple-100 border-2 border-black rounded-[12px] p-2 text-xs font-bold text-center">📦 সেলার যে পণ্য পাঠাবে তা এখানে সংরক্ষিত থাকবে - এডমিন Edit/Delete করতে পারে</div>
+            <div className="grid md:grid-cols-2 gap-3 mt-3">
+              {sellerRecords.map((p:any)=><div key={p.id} className="bg-white border-2 border-black rounded-[16px] p-2 shadow-[2px_2px_0px_black]">
+                <div className="flex justify-between items-center"><span className="text-xs font-bold">🏪 {p.shop} - {p.title} - {p.price}৳ - {p.quantity||1} পিস</span><button type="button" onClick={()=>handleDeleteSeller(p.id)} className="bg-red-500 text-white w-6 h-6 rounded-full text-xs font-black">X</button></div>
+                <img src={p.images?.[0]||p.image} alt="" className="w-full h-40 object-cover mt-2 rounded-[12px] border-2 border-black"/>
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <button type="button" onClick={()=>moveSellerToAdmin(p)} className="bg-yellow-400 border-2 border-black rounded-full py-2 text-xs font-black">✏️ Edit করে Admin অংশে নিন</button>
+                  <button type="button" onClick={()=>handleDeleteSeller(p.id)} className="bg-white border-2 border-black rounded-full py-2 text-xs font-bold">🗑️ Delete</button>
+                </div>
+              </div>)}
+              {sellerRecords.length===0&&<div className="col-span-2 text-center py-12 bg-white border-2 border-dashed rounded-[16px]">📭 সেলার কোনো পণ্য পাঠায়নি</div>}
+            </div>
+          </div>
+        )}
+
+        {/* এডমিন অংশ - সংরক্ষিত - আপনার ছবির মতো 2 কলাম কার্ড + 3 বাটন */}
+        {active==="admin"&&(
+          <div>
+            <div className="bg-emerald-100 border-2 border-black rounded-[12px] p-2 text-xs font-bold text-center">✏️ এডমিন অংশ সংরক্ষিত - এখান থেকে 2 দিকে পাঠানো যাবে: 1) Display (অফার/নতুন) 2) Category অনুযায়ী দোকানে</div>
+            <div className="grid md:grid-cols-2 gap-3 mt-3">
+              {adminEdited.map((p:any)=><div key={p.editId} className="bg-white border-2 border-black rounded-[16px] p-2 shadow-[2px_2px_0px_black]">
+                <div className="flex justify-between"><span className="text-xs font-bold">🏪 {p.editedShop||p.shop} - {p.editedTitle||p.title} - {p.offerPrice||p.price}৳ - {p.quantity} পিস - {p.badge}</span><button type="button" onClick={()=>handleDeleteAdmin(p.editId)} className="bg-red-500 text-white w-5 h-5 rounded-full text-[10px] font-black">X</button></div>
+                <img src={p.editedImages?.[0]||p.image} alt="" className="w-full h-44 object-cover mt-2 rounded-[12px] border-2 border-black"/>
+                <div className="grid grid-cols-3 gap-1.5 mt-2">
+                  <button type="button" onClick={()=>{ setEditItem(p); window.scrollTo({top:0,behavior:"smooth"}); }} className="bg-[#facc15] border-2 border-black rounded-full py-2 text-xs font-black">✏️ Edit</button>
+                  <button type="button" onClick={()=>sendNormal(p)} className="bg-black text-white border-2 border-black rounded-full py-2 text-[11px] font-black">📦 Normal {p.editedShop} লিস্টে</button>
+                  <button type="button" onClick={()=>sendSpecial(p)} className="bg-gradient-to-r from-pink-500 to-red-500 text-white border-2 border-black rounded-full py-2 text-[11px] font-black">🔥 Special টপে</button>
+                </div>
+              </div>)}
+              {adminEdited.length===0&&<div className="col-span-2 text-center py-12 bg-white border-2 border-dashed rounded-[16px]">📭 এডমিন এডিট নেই - সেলার অংশ থেকে Edit করে আনুন</div>}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
