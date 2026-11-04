@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function SellerPage() {
   const [shop, setShop] = useState("SHOP-01");
@@ -12,135 +12,158 @@ export default function SellerPage() {
   const [desc, setDesc] = useState("");
   const [remark, setRemark] = useState("");
   const [products, setProducts] = useState<any[]>([]);
-  const [editId, setEditId] = useState<any>(null);
+  const [editId, setEditId] = useState<number | null>(null);
 
   useEffect(() => {
-    try { setProducts(JSON.parse(localStorage.getItem("seller_drafts") || "[]")); } catch { setProducts([]); }
+    try {
+      const d = JSON.parse(localStorage.getItem("seller_drafts") || "[]");
+      setProducts(Array.isArray(d) ? d : []);
+    } catch { setProducts([]); }
   }, []);
 
-  const saveAll = (list: any[]) => {
-    localStorage.setItem("seller_drafts", JSON.stringify(list));
-    setProducts(list);
+  const saveDrafts = (list: any[]) => {
+    try {
+      localStorage.setItem("seller_drafts", JSON.stringify(list));
+      setProducts(list);
+    } catch { alert("ছবি অনেক বড়! ২টার বেশি ছবি দিবেন না"); }
   };
 
-  // ছবি ছোট করা - 800px + 0.7 quality, তাহলে Send আটকাবে না
-  const compress = (file: File): Promise<string> => {
-    return new Promise((res) => {
-      const r = new FileReader();
-      r.onload = () => {
-        const im = new Image();
-        im.onload = () => {
-          const c = document.createElement("canvas");
-          const max = 800;
-          let w = im.width, h = im.height;
-          if (w > max) { h = h * max / w; w = max; }
-          c.width = w; c.height = h;
-          c.getContext("2d")!.drawImage(im, 0, 0, w, h);
-          res(c.toDataURL("image/jpeg", 0.7));
+  // ছবি অটো রিসাইজ - 700px
+  const resizeOne = (file: File) => {
+    return new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let w = img.width, h = img.height;
+          const MAX = 700;
+          if (w > MAX) { h = (h * MAX) / w; w = MAX; }
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          ctx?.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.65));
         };
-        im.src = String(r.result);
+        img.src = String(reader.result);
       };
-      r.readAsDataURL(file);
+      reader.readAsDataURL(file);
     });
   };
 
-  // ✅ একাধিক ছবি নেওয়া
-  const onFiles = async (e: any) => {
-    const files = Array.from(e.target.files || []) as File[];
-    if (images.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি দিতে পারবেন"); return; }
-    const done: string[] = [];
-    for (const f of files) done.push(await compress(f));
-    setImages([...images, ...done]);
+  // একাধিক ছবি চুজ করা
+  const handleFiles = async (e: any) => {
+    const files: File[] = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    if (images.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি"); return; }
+    alert(files.length + " টা ছবি রিসাইজ হচ্ছে, একটু দাঁড়ান...");
+    const out: string[] = [];
+    for (const f of files) { out.push(await resizeOne(f)); }
+    setImages([...images, ...out]);
+    e.target.value = ""; // একই ছবি আবার চুজ করা যাবে
   };
 
-  const saveDraft = () => {
-    if (!name || !price) { alert("নাম আর দাম দেন"); return; }
-    const item = { id: editId || Date.now(), shop, shopName, phone, name, price, oldPrice, desc, remark, images, img: images[0] || "", tag: "NEW" };
-    if (editId) saveAll(products.map(p => p.id === editId ? item : p));
-    else saveAll([...products, item]);
-    alert(editId ? "✅ Edit সেভ হয়েছে" : "✅ Draft-এ যোগ হয়েছে");
-    setEditId(null); setImages([]); setName("Borka");
+  const addOrUpdate = () => {
+    if (!name || !price) { alert("নাম আর দাম লাগবে"); return; }
+    const item = {
+      id: editId || Date.now(),
+      shop, shopName, phone, name, price, oldPrice, desc, remark,
+      images: images, img: images[0] || "",
+    };
+    if (editId) {
+      saveDrafts(products.map((p) => (p.id === editId ? item : p)));
+      alert("✅ Edit সেভ হয়েছে");
+    } else {
+      saveDrafts([...products, item]);
+      alert("✅ Draft-এ যোগ হয়েছে");
+    }
+    setEditId(null); setImages([]); setDesc(""); setRemark("");
   };
 
-  const startEdit = (p: any) => {
-    setEditId(p.id); setShop(p.shop); setShopName(p.shopName); setPhone(p.phone);
+  const doEdit = (p: any) => {
+    setEditId(p.id);
+    setShop(p.shop); setShopName(p.shopName); setPhone(p.phone);
     setName(p.name); setPrice(p.price); setOldPrice(p.oldPrice);
-    setImages(p.images || [p.img].filter(Boolean)); setDesc(p.desc || ""); setRemark(p.remark || "");
+    setDesc(p.desc || ""); setRemark(p.remark || "");
+    setImages(p.images || (p.img ? [p.img] : []));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const del = (id: any) => {
+  const doDelete = (id: number) => {
     if (!confirm("মুছে ফেলবো?")) return;
-    saveAll(products.filter(p => p.id !== id));
+    saveDrafts(products.filter((p) => p.id !== id));
   };
 
-  // ✅ SEND ADMIN - পাঠানোর পর Seller থেকে মুছে যাবে
-  const sendToAdmin = () => {
+  // SEND ADMIN - পাঠানোর পর Seller থেকে মুছে যাবে
+  const sendAdmin = () => {
     if (products.length === 0) { alert("আগে Draft-এ যোগ করেন"); return; }
+    if (editId) { alert("আগে Edit সেভ করুন বা Edit বাতিল করুন"); return; }
     try {
-      const pending = JSON.parse(localStorage.getItem("admin_pending") || "[]");
-      const toSend = products.map(p => ({ ...p, sentAt: new Date().toLocaleString("bn-BD") }));
-      localStorage.setItem("admin_pending", JSON.stringify([...pending, ...toSend]));
-      // Seller Draft খালি করে দেওয়া
+      const old = JSON.parse(localStorage.getItem("admin_pending") || "[]");
+      const toSend = products.map((p) => ({ ...p, sentAt: new Date().toLocaleString("bn-BD") }));
+      localStorage.setItem("admin_pending", JSON.stringify([...old, ...toSend]));
+      // Seller Draft খালি করা
       localStorage.setItem("seller_drafts", JSON.stringify([]));
       setProducts([]);
-      alert(`✅ ${toSend.length} টা পণ্য Admin-এ চলে গেছে! Seller Draft এখন খালি। Admin Approve করলে Customer দেখবে`);
-    } catch (e) {
-      alert("❌ ছবি অনেক বড় হয়ে গেছে। ১-২টা ছবি দিয়ে আবার চেষ্টা করেন");
+      setImages([]);
+      alert("✅ " + toSend.length + " টা পণ্য Admin-এ চলে গেছে! Seller এখন খালি।");
+    } catch (err) {
+      alert("❌ জায়গা শেষ। ব্রাউজারে Ctrl+Shift+J চেপে localStorage.clear() লিখে Enter দেন, তারপর আবার চেষ্টা করেন");
     }
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "Hind Siliguri", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
       <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid #eee" }}>
-        <h3 style={{ marginTop: 0 }}>{editId ? "✏️ Edit করতেছেন..." : "🏪 দোকানের ঠিকানা + পণ্য"}</h3>
-        <input value={shop} onChange={e => setShop(e.target.value)} placeholder="SHOP-01" style={inp} />
-        <input value={shopName} onChange={e => setShopName(e.target.value)} placeholder="Gawsia" style={inp} />
-        <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="মোবাইল" style={inp} />
-        <input value={name} onChange={e => setName(e.target.value)} placeholder="Borka" style={inp} />
-        <input value={price} onChange={e => setPrice(e.target.value)} placeholder="500" style={inp} />
-        <input value={oldPrice} onChange={e => setOldPrice(e.target.value)} placeholder="900" style={inp} />
+        <h3>{editId ? "✏️ Edit করতেছেন" : "🏪 দোকান + পণ্য"}</h3>
+        <input value={shop} onChange={(e) => setShop(e.target.value)} placeholder="SHOP-01" style={inp} />
+        <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Gawsia" style={inp} />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="মোবাইল" style={inp} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Borka" style={inp} />
+        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" style={inp} />
+        <input value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="900" style={inp} />
 
-        <label style={{ fontSize: 13, fontWeight: 800 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত (ফাইল থেকে)</label>
-        <input type="file" accept="image/*" multiple onChange={onFiles} style={{ ...inp, padding: 8 }} />
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত নিতে পারবেন</div>
+        <input type="file" accept="image/*" multiple onChange={handleFiles} style={{ ...inp, padding: 8 }} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           {images.map((im, i) => (
             <div key={i} style={{ position: "relative" }}>
-              <img src={im} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: i === 0 ? "3px solid #16A34A" : "1px solid #ddd" }} />
-              <button onClick={() => setImages(images.filter((_, x) => x !== i))} style={{ position: "absolute", top: -6, right: -6, background: "red", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer" }}>×</button>
-              {i === 0 && <div style={{ fontSize: 9, textAlign: "center", color: "#16A34A", fontWeight: 800 }}>MAIN</div>}
+              <img src={im} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: i === 0 ? "3px solid green" : "1px solid #ddd" }} />
+              <button onClick={() => setImages(images.filter((_, x) => x !== i))} style={{ position: "absolute", top: -7, right: -7, background: "red", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20 }}>×</button>
+              {i === 0 && <div style={{ fontSize: 10, textAlign: "center", color: "green", fontWeight: 800 }}>MAIN</div>}
             </div>
           ))}
         </div>
-        {images.length > 0 && <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>প্রথম ছবিটাই Main ছবি হবে।</div>}
+        {images.length === 0 && <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>এখনো ছবি নেওয়া হয় নাই</div>}
 
-        <textarea value={desc} onChange={e => setDesc(e.target.value)} placeholder="মন্তব্য / Comment" style={{ ...inp, height: 50 }} />
-        <textarea value={remark} onChange={e => setRemark(e.target.value)} placeholder="Remark / অ্যাডমিনের জন্য নোট" style={{ ...inp, height: 50 }} />
-        <button onClick={saveDraft} style={{ width: "100%", background: editId ? "#FACC15" : "#111", color: editId ? "#111" : "#fff", padding: 13, borderRadius: 10, border: "none", fontWeight: 900, cursor: "pointer" }}>
+        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="মন্তব্য" style={{ ...inp, height: 50 }} />
+        <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Remark" style={{ ...inp, height: 50 }} />
+        <button onClick={addOrUpdate} style={{ width: "100%", background: editId ? "#FACC15" : "#111", color: editId ? "#111" : "#fff", padding: 13, borderRadius: 10, border: "none", fontWeight: 900 }}>
           {editId ? "✅ Edit সেভ করুন" : "+ Draft-এ যোগ করুন"}
         </button>
+        {editId && <button onClick={() => { setEditId(null); setImages([]); }} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #ddd", background: "#fff" }}>❌ Edit বাতিল</button>}
       </div>
 
       <div>
-        <h3>👁️ প্রিভিউ + Edit / Delete / Send</h3>
-        {products.map(p => (
+        <h3>👁️ প্রিভিউ</h3>
+        {products.length === 0 && <div style={{ background: "#FEF3C7", padding: 12, borderRadius: 10 }}>Draft খালি</div>}
+        {products.map((p) => (
           <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
             <div style={{ display: "flex", overflowX: "auto" }}>
               {(p.images || [p.img]).filter(Boolean).map((im: string, i: number) => (
-                <img key={i} src={im} style={{ width: 150, height: 150, objectFit: "cover", flexShrink: 0 }} />
+                <img key={i} src={im} style={{ width: 140, height: 140, objectFit: "cover" }} />
               ))}
             </div>
             <div style={{ padding: 12 }}>
-              <b>{p.name} - {p.price}৳</b> <del style={{ color: "#999" }}>{p.oldPrice}৳</del> <span style={{ fontSize: 12 }}>• {p.images?.length || 1}টি ছবি</span>
+              <b>{p.name} - {p.price}৳</b> <del>{p.oldPrice}৳</del> <span>• {p.images?.length || 1} টা ছবি</span>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <button onClick={() => startEdit(p)} style={{ flex: 1, background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, cursor: "pointer" }}>✏️ Edit</button>
-                <button onClick={() => del(p.id)} style={{ flex: 1, background: "#fff", border: "1px solid #ddd", padding: 10, borderRadius: 8, cursor: "pointer" }}>🗑️ Delete</button>
+                <button onClick={() => doEdit(p)} style={{ flex: 1, background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>✏️ Edit</button>
+                <button onClick={() => doDelete(p.id)} style={{ flex: 1, background: "#fff", border: "1px solid #ddd", padding: 10, borderRadius: 8 }}>🗑️ Delete</button>
               </div>
             </div>
           </div>
         ))}
-        <button onClick={sendToAdmin} style={{ width: "100%", background: "#16A34A", color: "#fff", padding: 14, border: "none", borderRadius: 12, fontWeight: 900, fontSize: 15, cursor: "pointer" }}>📤 Send Admin - {products.length} টা পণ্য</button>
-        <p style={{ fontSize: 12, color: "#666", textAlign: "center" }}>Send করলেই Seller Draft খালি হয়ে Admin Pending-এ চলে যাবে</p>
+        <button onClick={sendAdmin} style={{ width: "100%", background: "#16A34A", color: "#fff", padding: 14, border: "none", borderRadius: 12, fontWeight: 900 }}>📤 Send Admin - {products.length} টা পণ্য</button>
+        <p style={{ fontSize: 12, color: "#666", textAlign: "center" }}>Send করলেই Seller খালি হয়ে Admin Pending-এ চলে যাবে</p>
       </div>
     </div>
   );
