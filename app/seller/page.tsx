@@ -20,20 +20,15 @@ export default function SellerPage() {
     e.target.value = "";
   };
 
-  // ফর্মের ছবি আলাদা ডিলিট
   const deleteFormImage = (idx: number) => {
     setImages(images.filter((_, j) => j !== idx));
   };
 
-  // Draft-এর ভিতরে ছবি আলাদা ডিলিট - Edit করার সময়
   const deleteDraftImage = (draftIdx: number, imgIdx: number) => {
     const copy = [...drafts];
     copy[draftIdx].images = copy[draftIdx].images.filter((_: any, j: number) => j !== imgIdx);
     setDrafts(copy);
-    // যদি ঐ Draft টাই Edit-এ থাকে, ফর্মের ছবিও আপডেট হবে
-    if (editIndex === draftIdx) {
-      setImages(copy[draftIdx].images);
-    }
+    if (editIndex === draftIdx) setImages(copy[draftIdx].images);
   };
 
   const clearForm = () => {
@@ -99,13 +94,12 @@ export default function SellerPage() {
             <input value={wholesale} onChange={(e)=>setWholesale(e.target.value)} placeholder="500" type="number" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" />
 
             <label className="block text-sm font-bold mt-4">খুচরা মূল্য</label>
-            <input value={retail} onChange={(e)=>setRetail(e.target.value)} placeholder="700" type="number" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" />
+            <input value={retail} onChange={(e)=>setRetail(e.target.value)} placeholder="800" type="number" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" />
 
             <label className="block text-sm font-bold mt-4">📷 ছবি - একসাথে সর্বোচ্চ 6টা</label>
             <input type="file" multiple accept="image/*" onChange={handleImage} className="w-full border rounded-xl px-4 py-3 mt-2 text-sm" />
             <p className="text-xs text-gray-500 mt-1">ছবি {images.length} / 6 টা</p>
 
-            {/* ফর্মে ছবি - আলাদা আলাদা ডিলিট */}
             {images.length > 0 && (
               <div className="flex gap-2 mt-2 flex-wrap">
                 {images.map((img, j) => (
@@ -118,10 +112,10 @@ export default function SellerPage() {
             )}
 
             <label className="block text-sm font-bold mt-4">মন্তব্য</label>
-            <textarea value={montobbo} onChange={(e)=>setMontobbo(e.target.value)} placeholder="মন্তব্য লিখেন" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500" rows={2} />
+            <textarea value={montobbo} onChange={(e)=>setMontobbo(e.target.value)} placeholder="মন্তব্য লিখেন" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" rows={2} />
 
             <label className="block text-sm font-bold mt-4">রিমার্ক</label>
-            <textarea value={remark} onChange={(e)=>setRemark(e.target.value)} placeholder="Remark - অ্যাডমিনের জন্য নোট" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500" rows={2} />
+            <textarea value={remark} onChange={(e)=>setRemark(e.target.value)} placeholder="Remark - অ্যাডমিনের জন্য নোট" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" rows={2} />
 
             <button onClick={addOrSave} className="w-full bg-black text-white rounded-full py-3 mt-4 font-bold text-sm">
               {editIndex !== null ? "✅ Save / আপডেট করুন" : "+ Draft-এ যোগ করুন"}
