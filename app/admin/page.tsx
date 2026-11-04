@@ -1,65 +1,91 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
+
+const DB = "shopDB";
+function idb(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open(DB, 1);
+    r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
+async function idbGet(key: string): Promise<any> {
+  const db = await idb();
+  return new Promise((res) => {
+    const tx = db.transaction("kv", "readonly"); const q = tx.objectStore("kv").get(key);
+    q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
+  });
+}
+async function idbSet(key: string, val: any) {
+  const db = await idb();
+  return new Promise<void>((res) => {
+    const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(val, key);
+    tx.oncomplete = () => res(); tx.onerror = () => res();
+  });
+}
 
 export default function AdminPage() {
   const [pending, setPending] = useState<any[]>([]);
-  const [saved, setSaved] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
 
-  useEffect(() => {
-    setPending(JSON.parse(localStorage.getItem("admin_pending") || "[]"));
-    setSaved(JSON.parse(localStorage.getItem("admin_saved") || "[]"));
-  }, []);
-
-  const approve = (item: any) => {
-    const newSaved = [...saved, { ...item, status: "APPROVED", approvedAt: new Date().toLocaleString("bn-BD") }];
-    const newPending = pending.filter((p) => p.id !== item.id);
-    const customer = JSON.parse(localStorage.getItem("customer_products") || "[]");
-    localStorage.setItem("admin_saved", JSON.stringify(newSaved));
-    localStorage.setItem("admin_pending", JSON.stringify(newPending));
-    localStorage.setItem("customer_products", JSON.stringify([...customer, item]));
-    setSaved(newSaved); setPending(newPending);
-    alert("✅ Approved! এখন Customer দেখতে পাবে");
+  const load = async () => {
+    setPending((await idbGet("admin_pending")) || []);
+    setProducts((await idbGet("admin_products")) || []);
   };
+  useEffect(() => { load(); }, []);
 
-  const reject = (id: any) => {
-    const np = pending.filter((p) => p.id !== id);
-    localStorage.setItem("admin_pending", JSON.stringify(np)); setPending(np);
+  const approve = async (p: any) => {
+    await idbSet("admin_pending", pending.filter((x) => x.id !== p.id));
+    await idbSet("admin_products", [...products, { ...p, approvedAt: new Date().toLocaleString("bn-BD") }]);
+    alert("✅ Approve হয়ে গেছে - Customer এখন দেখবে");
+    load();
   };
-
-  const removeSaved = (id: any) => {
-    const ns = saved.filter((p) => p.id !== id);
-    const cust = JSON.parse(localStorage.getItem("customer_products") || "[]").filter((p: any) => p.id !== id);
-    localStorage.setItem("admin_saved", JSON.stringify(ns));
-    localStorage.setItem("customer_products", JSON.stringify(cust));
-    setSaved(ns);
+  const reject = async (id: number) => {
+    if (!confirm("Reject / Delete করবো?")) return;
+    await idbSet("admin_pending", pending.filter((x) => x.id !== id));
+    load();
+  };
+  const delProduct = async (id: number) => {
+    if (!confirm("Product মুছে ফেলবো?")) return;
+    await idbSet("admin_products", products.filter((x) => x.id !== id));
+    load();
   };
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", padding: 16, fontFamily: "Hind Siliguri" }}>
-      <div style={{ background: "#111", color: "#fff", padding: 20, borderRadius: 16 }}>
-        <h1 style={{ margin: 0 }}>🛡️ Admin Panel - Gawsia</h1>
-        <p style={{ opacity: 0.7 }}>Seller থেকে আসা পণ্য যাচাই করে Customer-কে পাঠান</p>
-      </div>
-
-      <h2 style={{ marginTop: 24 }}>📥 নতুন আসা - Pending ({pending.length}টি)</h2>
-      {pending.length === 0 && <div style={{ background: "#FEF3C7", padding: 14, borderRadius: 12 }}>এখনো Seller থেকে কোনো পণ্য আসে নাই।</div>}
+    <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}>
+      <h2>👑 Admin Panel</h2>
+      <h3>⏳ Pending - {pending.length} টা</h3>
+      {pending.length === 0 && <div style={{ background: "#FEF3C7", padding: 12, borderRadius: 10 }}>Pending খালি - Seller থেকে Send করলে এখানে আসবে</div>}
       {pending.map((p) => (
-        <div key={p.id} style={{ display: "flex", gap: 12, background: "#fff", border: "1px solid #eee", padding: 12, borderRadius: 14, marginTop: 10, alignItems: "center" }}>
-          <img src={p.img || p.image} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 10 }} />
-          <div style={{ flex: 1 }}>
-            <b>{p.name} - {p.price}৳</b><br /><small>{p.shop} • {p.desc}</small>
+        <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ display: "flex", overflowX: "auto" }}>
+            {(p.images || [p.img]).filter(Boolean).map((im: string, i: number) => (
+              <img key={i} src={im} style={{ width: 160, height: 160, objectFit: "cover" }} />
+            ))}
           </div>
-          <button onClick={() => approve(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: "10px 14px", borderRadius: 10, fontWeight: 800 }}>✅ Approve</button>
-          <button onClick={() => reject(p.id)} style={{ background: "#FEE2E2", border: "none", padding: "10px", borderRadius: 10 }}>❌</button>
+          <div style={{ padding: 12 }}>
+            <b style={{ fontSize: 18 }}>{p.name}</b> <span style={{ fontSize: 12, color: "#666" }}>• {p.shop} - {p.shopName} - {p.phone}</span><br />
+            <span>পাইকারি: {p.price}৳</span> <span style={{ color: "#666" }}>• খুচরা: {p.oldPrice}৳</span> <span>• {p.images?.length || 1} / ৪ টা ছবি</span><br />
+            <span style={{ fontSize: 13, color: "#555" }}>মন্তব্য: {p.desc} | Remark: {p.remark}</span>
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button onClick={() => approve(p)} style={{ flex: 1, background: "#16A34A", color: "#fff", border: "none", padding: 11, borderRadius: 8, fontWeight: 800 }}>✅ Approve</button>
+              <button onClick={() => reject(p.id)} style={{ flex: 1, background: "#fff", border: "1px solid #ddd", padding: 11, borderRadius: 8 }}>🗑️ Reject</button>
+            </div>
+          </div>
         </div>
       ))}
 
-      <h2 style={{ marginTop: 30 }}>💾 সংরক্ষিত - Approved ({saved.length}টি) - Customer এ লাইভ</h2>
-      {saved.map((p) => (
-        <div key={p.id} style={{ display: "flex", gap: 12, background: "#F0FDF4", border: "1px solid #BBF7D0", padding: 12, borderRadius: 14, marginTop: 10, alignItems: "center" }}>
-          <img src={p.img || p.image} style={{ width: 70, height: 70, objectFit: "cover", borderRadius: 10 }} />
-          <div style={{ flex: 1 }}><b>{p.name} - {p.price}৳</b><br /><small>✅ Approved • {p.approvedAt}</small></div>
-          <button onClick={() => removeSaved(p.id)} style={{ background: "#fff", border: "1px solid #ddd", padding: "8px 12px", borderRadius: 8 }}>Customer থেকে সরান</button>
+      <h3 style={{ marginTop: 30 }}>🛍️ Live Product - {products.length} টা</h3>
+      {products.map((p) => (
+        <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ display: "flex", overflowX: "auto" }}>
+            {(p.images || [p.img]).filter(Boolean).map((im: string, i: number) => (
+              <img key={i} src={im} style={{ width: 120, height: 120, objectFit: "cover" }} />
+            ))}
+          </div>
+          <div style={{ padding: 12 }}><b>{p.name}</b> - পাইকারি {p.price}৳ • খুচরা {p.oldPrice}৳
+            <button onClick={() => delProduct(p.id)} style={{ float: "right", background: "#fff", border: "1px solid #ddd", padding: "6px 10px", borderRadius: 8 }}>🗑️</button>
+          </div>
         </div>
       ))}
     </div>
