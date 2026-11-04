@@ -14,49 +14,47 @@ export default function SellerPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [status, setStatus] = useState("");
-  const [storage, setStorage] = useState("");
-
-  const calcStorage = () => {
-    try {
-      const total = (localStorage.getItem("seller_drafts") || "").length + (localStorage.getItem("admin_pending") || "").length + (localStorage.getItem("admin_products") || "").length;
-      setStorage("ব্রাউজারে জমা: " + Math.round(total / 1024) + " KB / 5000 KB");
-    } catch {}
-  };
 
   useEffect(() => {
-    try { const d = JSON.parse(localStorage.getItem("seller_drafts") || "[]"); setProducts(Array.isArray(d) ? d : []); } catch { setProducts([]); }
-    calcStorage();
+    try { const d = JSON.parse(localStorage.getItem("seller_drafts") || "[]"); setProducts(Array.isArray(d) ? d : []); }
+    catch { setProducts([]); }
   }, []);
 
-  // ✅ এক চাপে জায়গা খালি - আর Console লাগবে না
-  const clearStorage = () => {
-    if (!confirm("পুরনো বড় ছবিগুলা মুছে জায়গা খালি করবো? Seller Draft আর Pending খালি হয়ে যাবে।")) return;
-    localStorage.removeItem("seller_drafts");
-    localStorage.removeItem("admin_pending");
-    // admin_products রাখলাম না, কারণ ওইটাও বড় ছবি দিয়ে ভরে গেছে
-    setProducts([]); setImages([]); setStatus("✅ জায়গা খালি হয়ে গেছে! এখন নতুন করে ৪টা ছবি নেন");
-    calcStorage();
-    alert("✅ জায়গা খালি! এখন নতুন করে চেষ্টা করেন");
+  const saveDrafts = (list: any[]) => {
+    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); return true; }
+    catch { alert("❌ জায়গা শেষ। ১টা ছবি কমিয়ে আবার চেষ্টা করেন"); return false; }
   };
 
-  const autoResize = (file: File, targetKB = 45): Promise<string> => {
+  // ছবি ছোট করার ফাংশন - সাইজ বলে দিলেই ওই সাইজে করে দিবে
+  const shrink = (src: string, max: number, q: number): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const c = document.createElement("canvas");
+        let w = img.width, h = img.height;
+        if (w > max) { h = (h * max) / w; w = max; }
+        c.width = w; c.height = h;
+        c.getContext("2d")?.drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL("image/jpeg", q));
+      };
+      img.onerror = () => resolve(src);
+      img.src = src;
+    });
+  };
+
+  const resizeFile = (file: File): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const trySizes = [500, 350, 250, 180];
-          const tryQual = [0.6, 0.5, 0.45, 0.4];
-          for (let i = 0; i < trySizes.length; i++) {
-            const MAX = trySizes[i];
-            let w = img.width, h = img.height;
-            if (w > MAX) { h = (h * MAX) / w; w = MAX; }
-            const c = document.createElement("canvas");
-            c.width = w; c.height = h;
-            c.getContext("2d")?.drawImage(img, 0, 0, w, h);
-            const out = c.toDataURL("image/jpeg", tryQual[i]);
-            if (Math.round(out.length / 1024) <= targetKB || i === trySizes.length - 1) { resolve(out); return; }
-          }
+          const c = document.createElement("canvas");
+          let w = img.width, h = img.height;
+          const MAX = 600;
+          if (w > MAX) { h = (h * MAX) / w; w = MAX; }
+          c.width = w; c.height = h;
+          c.getContext("2d")?.drawImage(img, 0, 0, w, h);
+          resolve(c.toDataURL("image/jpeg", 0.65));
         };
         img.src = String(reader.result);
       };
@@ -67,27 +65,23 @@ export default function SellerPage() {
   const handleFiles = async (e: any) => {
     const files: File[] = Array.from(e.target.files || []);
     if (files.length === 0) return;
-    if (images.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি"); return; }
-    setStatus("⏳ অটো রিসাইজ হচ্ছে...");
+    if (images.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি দিতে পারবেন"); return; }
+    setStatus("⏳ " + files.length + " টা ছবি নেওয়া হচ্ছে...");
     const out: string[] = [];
-    for (const f of files) { out.push(await autoResize(f, 45)); }
+    for (const f of files) { out.push(await resizeFile(f)); }
     setImages([...images, ...out]);
-    setStatus("✅ অটো রিসাইজ শেষ! ৪টা ছবি মোট " + Math.round(JSON.stringify(out).length / 1024) + " KB");
+    setStatus("✅ " + (images.length + out.length) + " / ৪ টা ছবি রেডি");
     e.target.value = "";
   };
 
-  const saveDrafts = (list: any[]) => {
-    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); calcStorage(); return true; }
-    catch { alert("❌ জায়গা শেষ! নিচে লাল 'জায়গা খালি করুন' বাটন চাপ দেন"); return false; }
-  };
-
+  // ✅ Draft-এ যোগ - সব থাকবে
   const addOrUpdate = () => {
     if (!name || !price) { alert("পণ্যের নাম আর পাইকারি মূল্য লাগবে"); return; }
     if (images.length === 0) { alert("অন্তত ১টা ছবি নেন"); return; }
     const item = { id: editId || Date.now(), shop, shopName, phone, name, price, oldPrice, desc, remark, images, img: images[0] || "" };
     let ok = false;
     if (editId) { ok = saveDrafts(products.map((p) => (p.id === editId ? item : p))); if (ok) alert("✅ Edit সেভ হয়েছে"); }
-    else { ok = saveDrafts([...products, item]); if (ok) alert("✅ Draft-এ যোগ হয়েছে"); }
+    else { ok = saveDrafts([...products, item]); if (ok) alert("✅ Draft-এ যোগ হয়েছে - " + images.length + " টা ছবিসহ"); }
     if (!ok) return;
     setEditId(null); setImages([]); setName(""); setPrice(""); setOldPrice(""); setDesc(""); setRemark(""); setStatus("");
   };
@@ -100,18 +94,39 @@ export default function SellerPage() {
   };
   const doDelete = (id: number) => { if (!confirm("মুছে ফেলবো?")) return; saveDrafts(products.filter((p) => p.id !== id)); };
 
-  const sendAdmin = () => {
+  // ✅ Send Admin - ৪টা ছবিই যাবে, আটকালে অটো ছোট করে আবার চেষ্টা করবে
+  const sendAdmin = async () => {
     if (products.length === 0) { alert("আগে Draft-এ যোগ করেন"); return; }
     if (editId) { alert("আগে Edit সেভ করুন"); return; }
-    try {
-      const old = JSON.parse(localStorage.getItem("admin_pending") || "[]");
-      const toSend = products.map((p) => ({ ...p, sentAt: new Date().toLocaleString("bn-BD") }));
-      localStorage.setItem("admin_pending", JSON.stringify([...old, ...toSend]));
-      localStorage.setItem("seller_drafts", JSON.stringify([]));
-      setProducts([]); setImages([]); setStatus(""); calcStorage();
-      alert("✅ " + toSend.length + " টা পণ্য Admin-এ চলে গেছে! Seller এখন খালি।");
-    } catch {
-      alert("❌ জায়গা শেষ! নিচে লাল 'জায়গা খালি করুন' বাটন চাপ দিয়ে আবার চেষ্টা করেন");
+    setStatus("⏳ Admin-এ পাঠানো হচ্ছে... ৪টা ছবিসহ");
+    let toSend = products.map((p) => ({ ...p, sentAt: new Date().toLocaleString("bn-BD") }));
+    // ৩ বার চেষ্টা - 600px -> 400px -> 250px - যতক্ষণ না ঢুকে
+    const tries: any = [[600, 0.65], [400, 0.55], [250, 0.5]];
+    for (let t = 0; t < tries.length; t++) {
+      try {
+        const old = JSON.parse(localStorage.getItem("admin_pending") || "[]");
+        localStorage.setItem("admin_pending", JSON.stringify([...old, ...toSend]));
+        // ঢুকে গেছে - এখন Seller খালি
+        localStorage.setItem("seller_drafts", JSON.stringify([]));
+        setProducts([]); setImages([]); setStatus("");
+        alert("✅ " + toSend.length + " টা পণ্য Admin-এ চলে গেছে! প্রতিটার ৪টা ছবিসহ।");
+        return;
+      } catch {
+        // ঢুকে নাই - ছবি আরও ছোট করে আবার চেষ্টা
+        if (t === tries.length - 1) {
+          alert("❌ ব্রাউজার একদম ভরে গেছে। Admin থেকে পুরনো Pending Approve/Delete করেন, তারপর আবার Send দেন");
+          return;
+        }
+        const [mx, q] = tries[t + 1];
+        const newSend: any[] = [];
+        for (const p of toSend) {
+          const newImgs: string[] = [];
+          for (const im of (p.images || [])) { newImgs.push(await shrink(im, mx, q)); }
+          newSend.push({ ...p, images: newImgs, img: newImgs[0] || "" });
+        }
+        toSend = newSend;
+        setStatus("⏳ জায়গা কম, ছবি অটো " + mx + "px করে আবার পাঠানো হচ্ছে...");
+      }
     }
   };
 
@@ -119,27 +134,17 @@ export default function SellerPage() {
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
       <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid #eee" }}>
         <h3>{editId ? "✏️ Edit করতেছেন" : "🏪 দোকান + পণ্য"}</h3>
-        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", padding: 10, borderRadius: 10, marginBottom: 10 }}>
-          <div style={{ fontSize: 13, fontWeight: 700 }}>📦 {storage}</div>
-          <button onClick={clearStorage} style={{ width: "100%", marginTop: 8, background: "#DC2626", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, cursor: "pointer" }}>🗑️ জায়গা খালি করুন - পুরনো বড় ছবি মুছুন</button>
-          <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>জায়গা শেষ হলে এই বাটন চাপ দিবেন, Console লাগবে না।</div>
-        </div>
-
         <input value={shop} onChange={(e) => setShop(e.target.value)} placeholder="SHOP-01" style={inp} />
         <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="মোবাইল নাম্বার" style={inp} />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="পণ্যের নাম - যেমন: বোরকা / শাড়ি" style={inp} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="পণ্যের নাম - যেমন: বোরকা / শাড়ি / থ্রি-পিস" style={inp} />
         <div style={hint}>↑ এখানে পণ্যের নাম লিখবেন</div>
         <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="পাইকারি মূল্য - যেমন: 500" style={inp} />
         <div style={hint}>↑ পাইকারি মূল্য</div>
         <input value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="খুচরা মূল্য - যেমন: 800" style={inp} />
         <div style={hint}>↑ খুচরা মূল্য</div>
 
-        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, marginBottom: 10, fontSize: 13 }}>
-          <b>📐 অটো রিসাইজ ON</b> - ৪টা ছবি নিলেই অটো ৪৫ KB-এর নিচে চলে আসবে।
-        </div>
-
-        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত</div>
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>📸 ছবি - একসাথে সর্বোচ্চ ৪টা</div>
         <input type="file" accept="image/*" multiple onChange={handleFiles} style={{ ...inp, padding: 8 }} />
         {status && <div style={{ fontSize: 13, color: "#16A34A", fontWeight: 700, marginBottom: 8 }}>{status}</div>}
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -151,16 +156,18 @@ export default function SellerPage() {
             </div>
           ))}
         </div>
+        <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>ছবি: {images.length} / ৪ টা</div>
 
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="মন্তব্য" style={{ ...inp, height: 50 }} />
+        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="মন্তব্য - যেমন: কাপড় ভালো..." style={{ ...inp, height: 50 }} />
         <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Remark - অ্যাডমিনের জন্য নোট" style={{ ...inp, height: 50 }} />
         <button onClick={addOrUpdate} style={{ width: "100%", background: editId ? "#FACC15" : "#111", color: editId ? "#111" : "#fff", padding: 13, borderRadius: 10, border: "none", fontWeight: 900 }}>
           {editId ? "✅ Edit সেভ করুন" : "+ Draft-এ যোগ করুন"}
         </button>
+        {editId && <button onClick={() => { setEditId(null); setImages([]); }} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #ddd", background: "#fff" }}>❌ Edit বাতিল</button>}
       </div>
 
       <div>
-        <h3>👁️ প্রিভিউ</h3>
+        <h3>👁️ প্রিভিউ - Draft</h3>
         {products.length === 0 && <div style={{ background: "#FEF3C7", padding: 12, borderRadius: 10 }}>Draft খালি</div>}
         {products.map((p) => (
           <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
@@ -171,7 +178,7 @@ export default function SellerPage() {
             </div>
             <div style={{ padding: 12 }}>
               <b>{p.name}</b><br />
-              <span style={{ fontSize: 13 }}>পাইকারি: {p.price}৳</span> <span style={{ fontSize: 13, color: "#666" }}>• খুচরা: {p.oldPrice}৳</span>
+              <span style={{ fontSize: 13 }}>পাইকারি: {p.price}৳</span> <span style={{ fontSize: 13, color: "#666" }}>• খুচরা: {p.oldPrice}৳</span> <span style={{ fontSize: 12 }}>• {p.images?.length || 1} / ৪ টা ছবি</span>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => doEdit(p)} style={{ flex: 1, background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>✏️ Edit</button>
                 <button onClick={() => doDelete(p.id)} style={{ flex: 1, background: "#fff", border: "1px solid #ddd", padding: 10, borderRadius: 8 }}>🗑️ Delete</button>
@@ -179,7 +186,8 @@ export default function SellerPage() {
             </div>
           </div>
         ))}
-        <button onClick={sendAdmin} style={{ width: "100%", background: "#16A34A", color: "#fff", padding: 14, border: "none", borderRadius: 12, fontWeight: 900 }}>📤 Send Admin - {products.length} টা পণ্য</button>
+        <button onClick={sendAdmin} style={{ width: "100%", background: "#16A34A", color: "#fff", padding: 14, border: "none", borderRadius: 12, fontWeight: 900 }}>📤 Send Admin - {products.length} টা পণ্য (৪টা ছবিসহ যাবে)</button>
+        <p style={{ fontSize: 12, color: "#666", textAlign: "center" }}>Send করলেই ৪টা ছবিসহ Admin Pending-এ চলে যাবে, Seller খালি হয়ে যাবে</p>
       </div>
     </div>
   );
