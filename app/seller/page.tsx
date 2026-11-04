@@ -14,22 +14,39 @@ export default function SellerPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
   const [status, setStatus] = useState("");
+  const [storage, setStorage] = useState("");
+
+  const calcStorage = () => {
+    try {
+      const total = (localStorage.getItem("seller_drafts") || "").length + (localStorage.getItem("admin_pending") || "").length + (localStorage.getItem("admin_products") || "").length;
+      setStorage("ব্রাউজারে জমা: " + Math.round(total / 1024) + " KB / 5000 KB");
+    } catch {}
+  };
 
   useEffect(() => {
-    try { const d = JSON.parse(localStorage.getItem("seller_drafts") || "[]"); setProducts(Array.isArray(d) ? d : []); }
-    catch { setProducts([]); }
+    try { const d = JSON.parse(localStorage.getItem("seller_drafts") || "[]"); setProducts(Array.isArray(d) ? d : []); } catch { setProducts([]); }
+    calcStorage();
   }, []);
 
-  // ✅ অটো রিসাইজ - একটা ছবিকে টার্গেট KB-এর মধ্যে আনা
-  const autoResize = (file: File, targetKB = 70): Promise<string> => {
+  // ✅ এক চাপে জায়গা খালি - আর Console লাগবে না
+  const clearStorage = () => {
+    if (!confirm("পুরনো বড় ছবিগুলা মুছে জায়গা খালি করবো? Seller Draft আর Pending খালি হয়ে যাবে।")) return;
+    localStorage.removeItem("seller_drafts");
+    localStorage.removeItem("admin_pending");
+    // admin_products রাখলাম না, কারণ ওইটাও বড় ছবি দিয়ে ভরে গেছে
+    setProducts([]); setImages([]); setStatus("✅ জায়গা খালি হয়ে গেছে! এখন নতুন করে ৪টা ছবি নেন");
+    calcStorage();
+    alert("✅ জায়গা খালি! এখন নতুন করে চেষ্টা করেন");
+  };
+
+  const autoResize = (file: File, targetKB = 45): Promise<string> => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          // 700 -> 500 -> 350 -> 250 - যতক্ষণ না 70KB-এর নিচে আসে
-          const trySizes = [700, 500, 350, 250, 180];
-          const tryQual = [0.7, 0.6, 0.5, 0.45, 0.4];
+          const trySizes = [500, 350, 250, 180];
+          const tryQual = [0.6, 0.5, 0.45, 0.4];
           for (let i = 0; i < trySizes.length; i++) {
             const MAX = trySizes[i];
             let w = img.width, h = img.height;
@@ -38,8 +55,7 @@ export default function SellerPage() {
             c.width = w; c.height = h;
             c.getContext("2d")?.drawImage(img, 0, 0, w, h);
             const out = c.toDataURL("image/jpeg", tryQual[i]);
-            const kb = Math.round(out.length / 1024);
-            if (kb <= targetKB || i === trySizes.length - 1) { resolve(out); return; }
+            if (Math.round(out.length / 1024) <= targetKB || i === trySizes.length - 1) { resolve(out); return; }
           }
         };
         img.src = String(reader.result);
@@ -52,27 +68,17 @@ export default function SellerPage() {
     const files: File[] = Array.from(e.target.files || []);
     if (files.length === 0) return;
     if (images.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি"); return; }
-    setStatus("⏳ অটো রিসাইজ হচ্ছে... ৪টা ছবি ছোট করা হচ্ছে, একটু দাঁড়ান...");
+    setStatus("⏳ অটো রিসাইজ হচ্ছে...");
     const out: string[] = [];
-    for (const f of files) { out.push(await autoResize(f, 70)); }
+    for (const f of files) { out.push(await autoResize(f, 45)); }
     setImages([...images, ...out]);
-    const totalKb = Math.round(JSON.stringify(out).length / 1024);
-    setStatus("✅ অটো রিসাইজ শেষ! ৪টা ছবি মোট " + totalKb + " KB - এখন ৪টাই আপলোড হবে");
+    setStatus("✅ অটো রিসাইজ শেষ! ৪টা ছবি মোট " + Math.round(JSON.stringify(out).length / 1024) + " KB");
     e.target.value = "";
   };
 
   const saveDrafts = (list: any[]) => {
-    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); return true; }
-    catch {
-      // যদি তাও না ঢুকে, আরও ছোট করে আবার চেষ্টা - অটো
-      try {
-        const smallList = list.map((p) => ({ ...p, images: (p.images || []).map((im: string) => im.slice(0, 40000)), img: "" }));
-        localStorage.setItem("seller_drafts", JSON.stringify(smallList));
-        setProducts(smallList);
-        alert("✅ ছবি অটো আরও ছোট করে সেভ করা হয়েছে");
-        return true;
-      } catch { alert("❌ ব্রাউজার ভরে গেছে। Ctrl+Shift+J চেপে localStorage.clear() লিখে Enter দেন"); return false; }
-    }
+    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); calcStorage(); return true; }
+    catch { alert("❌ জায়গা শেষ! নিচে লাল 'জায়গা খালি করুন' বাটন চাপ দেন"); return false; }
   };
 
   const addOrUpdate = () => {
@@ -81,7 +87,7 @@ export default function SellerPage() {
     const item = { id: editId || Date.now(), shop, shopName, phone, name, price, oldPrice, desc, remark, images, img: images[0] || "" };
     let ok = false;
     if (editId) { ok = saveDrafts(products.map((p) => (p.id === editId ? item : p))); if (ok) alert("✅ Edit সেভ হয়েছে"); }
-    else { ok = saveDrafts([...products, item]); if (ok) alert("✅ Draft-এ যোগ হয়েছে - ৪টা ছবিসহ"); }
+    else { ok = saveDrafts([...products, item]); if (ok) alert("✅ Draft-এ যোগ হয়েছে"); }
     if (!ok) return;
     setEditId(null); setImages([]); setName(""); setPrice(""); setOldPrice(""); setDesc(""); setRemark(""); setStatus("");
   };
@@ -102,15 +108,23 @@ export default function SellerPage() {
       const toSend = products.map((p) => ({ ...p, sentAt: new Date().toLocaleString("bn-BD") }));
       localStorage.setItem("admin_pending", JSON.stringify([...old, ...toSend]));
       localStorage.setItem("seller_drafts", JSON.stringify([]));
-      setProducts([]); setImages([]); setStatus("");
+      setProducts([]); setImages([]); setStatus(""); calcStorage();
       alert("✅ " + toSend.length + " টা পণ্য Admin-এ চলে গেছে! Seller এখন খালি।");
-    } catch { alert("❌ জায়গা শেষ। Ctrl+Shift+J -> localStorage.clear() -> Enter"); }
+    } catch {
+      alert("❌ জায়গা শেষ! নিচে লাল 'জায়গা খালি করুন' বাটন চাপ দিয়ে আবার চেষ্টা করেন");
+    }
   };
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
       <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid #eee" }}>
         <h3>{editId ? "✏️ Edit করতেছেন" : "🏪 দোকান + পণ্য"}</h3>
+        <div style={{ background: "#FEF2F2", border: "1px solid #FECACA", padding: 10, borderRadius: 10, marginBottom: 10 }}>
+          <div style={{ fontSize: 13, fontWeight: 700 }}>📦 {storage}</div>
+          <button onClick={clearStorage} style={{ width: "100%", marginTop: 8, background: "#DC2626", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, cursor: "pointer" }}>🗑️ জায়গা খালি করুন - পুরনো বড় ছবি মুছুন</button>
+          <div style={{ fontSize: 11, color: "#666", marginTop: 4 }}>জায়গা শেষ হলে এই বাটন চাপ দিবেন, Console লাগবে না।</div>
+        </div>
+
         <input value={shop} onChange={(e) => setShop(e.target.value)} placeholder="SHOP-01" style={inp} />
         <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="মোবাইল নাম্বার" style={inp} />
@@ -122,7 +136,7 @@ export default function SellerPage() {
         <div style={hint}>↑ খুচরা মূল্য</div>
 
         <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, marginBottom: 10, fontSize: 13 }}>
-          <b>📐 অটো রিসাইজ ON</b> - আপনি শুধু ৪টা ছবি নিবেন, কোড নিজে নিজে ছোট করে নিবে। কিছু বাছতে হবে না। প্রতিটা ছবি অটো ৭০ KB-এর নিচে চলে আসবে।
+          <b>📐 অটো রিসাইজ ON</b> - ৪টা ছবি নিলেই অটো ৪৫ KB-এর নিচে চলে আসবে।
         </div>
 
         <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত</div>
