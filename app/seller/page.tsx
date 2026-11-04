@@ -21,23 +21,16 @@ export default function SellerPage() {
 
   const clearForm = () => {
     setPName(""); setWholesale(""); setRetail("");
-    setMontobbo(""); setRemark(""); setImages("");
+    setMontobbo(""); setRemark(""); setImages([]);
     setEditIndex(null);
   };
 
-  const addOrSaveDraft = () => {
-    if (!pName || !wholesale || !retail) {
-      alert("পণ্যের নাম, পাইকারি মূল্য, খুচরা মূল্য লিখেন");
-      return;
-    }
+  const addOrSave = () => {
+    if (!pName || !wholesale || !retail) { alert("পণ্যের নাম, পাইকারি মূল্য, খুচরা মূল্য লিখেন"); return; }
     const data = { pName, wholesale, retail, montobbo, remark, images };
     if (editIndex !== null) {
-      const copy = [...drafts];
-      copy[editIndex] = data;
-      setDrafts(copy);
-    } else {
-      setDrafts([...drafts, data]);
-    }
+      const copy = [...drafts]; copy[editIndex] = data; setDrafts(copy);
+    } else { setDrafts([...drafts, data]); }
     clearForm();
   };
 
@@ -50,22 +43,16 @@ export default function SellerPage() {
   };
 
   const deleteDraft = (i: number) => {
-    if (!confirm("এই Draft টা ডিলিট করবেন?")) return;
+    if (!confirm("ডিলিট করবেন?")) return;
     setDrafts(drafts.filter((_, j) => j !== i));
     if (editIndex === i) clearForm();
   };
 
   const sendAdmin = () => {
-    if (drafts.length === 0) {
-      alert("আগে Draft-এ যোগ করেন");
-      return;
-    }
-    // Admin-এর কাছে পাঠানো - localStorage-এ সেভ হচ্ছে
+    if (drafts.length === 0) { alert("আগে Draft-এ যোগ করেন"); return; }
     const old = JSON.parse(localStorage.getItem("admin_orders") || "[]");
     localStorage.setItem("admin_orders", JSON.stringify([...old, { shop, name, phone, items: drafts, time: new Date().toLocaleString() }]));
-
     alert("Admin-এর কাছে পাঠানো হয়েছে");
-    // Send-এর পর সম্পূর্ণ তথ্য মুছে যাবে
     setDrafts([]);
     setPName(""); setWholesale(""); setRetail("");
     setMontobbo(""); setRemark(""); setImages([]);
@@ -76,9 +63,9 @@ export default function SellerPage() {
   return (
     <div className="min-h-screen bg-[#f6f2ea] p-3 md:p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="bg-gradient-to-r from-black via-zinc-900 to-pink-700 text-white rounded-[20px] p-5 md:p-6 shadow-lg text-center">
-          <h1 className="font-black text-2xl md:text-3xl tracking-wide">GAUSIA COLLECTION</h1>
-          <p className="text-[12px] md:text-sm opacity-80 mt-1">Seller Page • my-shop-17lh.vercel.app/seller</p>
+        <div className="bg-gradient-to-r from-black via-zinc-900 to-pink-700 text-white rounded-[20px] p-5 text-center">
+          <h1 className="font-black text-2xl md:text-3xl">GAUSIA COLLECTION</h1>
+          <p className="text-xs opacity-80 mt-1">Seller Page • my-shop-17lh.vercel.app/seller</p>
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 mt-4">
@@ -107,7 +94,7 @@ export default function SellerPage() {
             <label className="block text-sm font-bold mt-4">রিমার্ক</label>
             <textarea value={remark} onChange={(e)=>setRemark(e.target.value)} placeholder="Remark - অ্যাডমিনের জন্য নোট" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500" rows={2} />
 
-            <button onClick={addOrSaveDraft} className="w-full bg-black text-white rounded-full py-3 mt-4 font-bold text-sm">
+            <button onClick={addOrSave} className="w-full bg-black text-white rounded-full py-3 mt-4 font-bold text-sm">
               {editIndex !== null ? "✅ Save / আপডেট করুন" : "+ Draft-এ যোগ করুন"}
             </button>
             {editIndex !== null && <button onClick={clearForm} className="w-full border rounded-full py-2 mt-2 text-sm">বাতিল</button>}
