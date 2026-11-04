@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-
 function openDb(): Promise<any> {
   return new Promise((res, rej) => {
     const r = indexedDB.open("shopDB", 1);
@@ -22,7 +21,6 @@ async function setK(k: string, v: any) {
     tx.oncomplete = () => res(true); tx.onerror = () => res(true);
   });
 }
-
 export default function AdminPage() {
   const [pending, setPending] = useState<any[]>([]);
   const [approved, setApproved] = useState<any[]>([]);
@@ -32,7 +30,6 @@ export default function AdminPage() {
   const [fShop, setFShop] = useState(""); const [fShopName, setFShopName] = useState(""); const [fPhone, setFPhone] = useState("");
   const [fName, setFName] = useState(""); const [fPrice, setFPrice] = useState(""); const [fOld, setFOld] = useState("");
   const [fDesc, setFDesc] = useState(""); const [fRemark, setFRemark] = useState(""); const [fImgs, setFImgs] = useState<any[]>([]);
-
   const load = async () => {
     const p: any = (await getK("admin_pending")) || [];
     let a: any = (await getK("admin_approved")) || [];
@@ -41,7 +38,6 @@ export default function AdminPage() {
     setPending(p); setApproved(a); setLive(l);
   };
   useEffect(() => { load(); }, []);
-
   const startEdit = (p: any, from: string) => {
     setEditId(p.id); setEditFrom(from);
     setFShop(p.shop || ""); setFShopName(p.shopName || ""); setFPhone(p.phone || "");
@@ -49,7 +45,6 @@ export default function AdminPage() {
     setFDesc(p.desc || ""); setFRemark(p.remark || ""); setFImgs(p.images || (p.img ? [p.img] : []));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
-
   const onFiles = async (e: any) => {
     const files: any[] = Array.from(e.target.files || []);
     if (fImgs.length + files.length > 4) { alert("সর্বোচ্চ ৪টা"); return; }
@@ -69,7 +64,6 @@ export default function AdminPage() {
     }
     setFImgs([...fImgs, ...out]); e.target.value = "";
   };
-
   const saveEdit = async () => {
     if (!editId) return;
     const mk = (list: any[]) => list.map((x) => x.id === editId ? { ...x, shop: fShop, shopName: fShopName, phone: fPhone, name: fName, price: fPrice, oldPrice: fOld, desc: fDesc, remark: fRemark, images: fImgs, img: fImgs[0] || "", adminEditedAt: new Date().toLocaleString("bn-BD") } : x);
@@ -78,7 +72,6 @@ export default function AdminPage() {
     if (editFrom === "live") { const n = mk(live); await setK("admin_products", n); setLive(n); const na = mk(approved); await setK("admin_approved", na); setApproved(na); }
     setEditId(null); alert("Edit সেভ হয়েছে");
   };
-
   const doApprove = async (p: any) => {
     const nP = pending.filter((x) => x.id !== p.id); await setK("admin_pending", nP); setPending(nP);
     const item = { ...p, approvedAt: new Date().toLocaleString("bn-BD") };
@@ -86,23 +79,19 @@ export default function AdminPage() {
     await setK("admin_approved", nA); setApproved(nA);
     alert("Approve হয়েছে - এখন Approved-এ আছে, Customer-এ যায় নাই");
   };
-
   const doSendCustomer = async (p: any) => {
     const item = { ...p, sentToCustomerAt: new Date().toLocaleString("bn-BD") };
     const nL = live.some((x) => x.id === p.id) ? live.map((x) => x.id === p.id ? item : x) : [...live, item];
     await setK("admin_products", nL); setLive(nL);
     alert("Customer-এ পাঠানো হয়েছে");
   };
-
   const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 6, outline: "none", boxSizing: "border-box" };
-
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}>
       <div style={{ background: "#111", color: "#fff", padding: 16, borderRadius: 12 }}>
-        <h2 style={{ margin: 0 }}>Admin Panel - Gawsia</h2>
+        <h2 style={{ margin: 0 }}>Admin Panel v999 - Gawsia</h2>
         <div style={{ fontSize: 13, opacity: 0.8 }}>Seller - Pending - Edit - Approve - Customer</div>
       </div>
-
       {editId && (
         <div style={{ background: "#FFFBEB", border: "2px solid #FACC15", padding: 16, borderRadius: 12, marginTop: 12 }}>
           <h3>Edit করতেছেন - {editFrom}</h3>
@@ -128,9 +117,7 @@ export default function AdminPage() {
           <button onClick={() => setEditId(null)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #ddd", background: "#fff" }}>বাতিল</button>
         </div>
       )}
-
       <h3>Pending - {pending.length} টি</h3>
-      {pending.length === 0 && <div style={{ background: "#FEF3C7", padding: 12, borderRadius: 10 }}>Pending খালি</div>}
       {pending.map((p: any) => (
         <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
           <div style={{ display: "flex", overflowX: "auto" }}>{(p.images || [p.img]).filter(Boolean).map((im: any, i: number) => (<img key={i} src={im} style={{ width: 150, height: 150, objectFit: "cover" }} />))}</div>
@@ -140,18 +127,16 @@ export default function AdminPage() {
           </div>
         </div>
       ))}
-
       <h3>Approved - {approved.length} টি - Edit করা যাবে, Customer-এ যায় নাই</h3>
       {approved.map((p: any) => (
         <div key={p.id} style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
           <div style={{ display: "flex", overflowX: "auto" }}>{(p.images || [p.img]).filter(Boolean).map((im: any, i: number) => (<img key={i} src={im} style={{ width: 150, height: 150, objectFit: "cover" }} />))}</div>
-          <div style={{ padding: 12 }}><b>{p.name}</b> - পাইকারি {p.price}৳ - খুচরা {p.oldPrice}৳ - {p.images?.length || 1} টা ছবি<br />
+          <div style={{ padding: 12 }}><b>{p.name}</b> - পাইকারি {p.price}৳ - খুচরা {p.oldPrice}৳<br />
             <button onClick={() => startEdit(p, "approved")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
             <button onClick={() => doSendCustomer(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>Customer-এ পাঠান</button>
           </div>
         </div>
       ))}
-
       <h3>Customer-এ লাইভ - {live.length} টি</h3>
       {live.map((p: any) => (
         <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
