@@ -1,209 +1,210 @@
 "use client";
 import { useState, useEffect } from "react";
-function openDb(): Promise<any> {
+
+function openDB(): Promise<any> {
   return new Promise((res, rej) => {
     const r = indexedDB.open("shopDB", 1);
     r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   });
 }
-async function getK(k: string) {
-  const db = await openDb();
+async function get(k: string) {
+  const db = await openDB();
   return new Promise((res) => {
     const q = db.transaction("kv", "readonly").objectStore("kv").get(k);
     q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
   });
 }
-async function setK(k: string, v: any) {
-  const db = await openDb();
+async function set(k: string, v: any) {
+  const db = await openDB();
   return new Promise((res) => {
     const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k);
     tx.oncomplete = () => res(true); tx.onerror = () => res(true);
   });
 }
+
 export default function AdminPage() {
-  const [pending, setPending] = useState<any[]>([]);
-  const [approved, setApproved] = useState<any[]>([]);
-  const [live, setLive] = useState<any[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [editId, setEditId] = useState<any>(null);
-  const [editFrom, setEditFrom] = useState("pending");
-  const [fShop, setFShop] = useState(""); const [fShopName, setFShopName] = useState(""); const [fPhone, setFPhone] = useState(""); const [fPrice, setFPrice] = useState("");
-  const [mTitle, setMTitle] = useState(""); const [mSale, setMSale] = useState(""); const [mMrp, setMMrp] = useState("");
-  const [mColors, setMColors] = useState(""); const [mSizes, setMSizes] = useState(""); const [mStock, setMStock] = useState("");
-  const [mBadge, setMBadge] = useState(""); const [mFreeDel, setMFreeDel] = useState(true); const [mDelCharge, setMDelCharge] = useState("60");
-  const [mDesc, setMDesc] = useState(""); const [mOffer, setMOffer] = useState("");
-  const [fImgs, setFImgs] = useState<any[]>([]);
-  const load = async () => {
-    const p: any = (await getK("admin_pending")) || [];
-    let a: any = (await getK("admin_approved")) || [];
-    const l: any = (await getK("admin_products")) || [];
-    if (l.length > 0 && a.length === 0) { a = l; await setK("admin_approved", a); }
-    setPending(p); setApproved(a); setLive(l);
-  };
+  const [title, setTitle] = useState("");
+  const [price, setPrice] = useState("");
+  const [oldPrice, setOldPrice] = useState("");
+  const [colors, setColors] = useState("");
+  const [sizes, setSizes] = useState("");
+  const [stock, setStock] = useState("");
+  const [freeDel, setFreeDel] = useState(false);
+  const [desc, setDesc] = useState("");
+  const [offer, setOffer] = useState("");
+  const [images, setImages] = useState<string[]>([]);
+  const [imgUrl, setImgUrl] = useState("");
+  const [filter, setFilter] = useState("all");
+
   useEffect(() => { load(); }, []);
-  const startEdit = (p: any, from: string) => {
-    setEditId(p.id); setEditFrom(from);
-    setFShop(p.shop || ""); setFShopName(p.shopName || ""); setFPhone(p.phone || ""); setFPrice(p.price || "");
-    setMTitle(p.mTitle || p.name || ""); setMSale(p.mSale || p.oldPrice || ""); setMMrp(p.mMrp || "");
-    setMColors((p.mColors || []).join(", ")); setMSizes((p.mSizes || []).join(", ")); setMStock(p.mStock || "10");
-    setMBadge(p.mBadge || "🔥 Best Seller"); setMFreeDel(p.mFreeDel !== false); setMDelCharge(p.mDelCharge || "60");
-    setMDesc(p.mDesc || p.desc || ""); setMOffer(p.mOffer || "ক্যাশ অন ডেলিভারি - প্রোডাক্ট দেখে টাকা দিবেন");
-    setFImgs(p.images || (p.img ? [p.img] : []));
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-  const onFiles = async (e: any) => {
-    const files: any[] = Array.from(e.target.files || []);
-    if (fImgs.length + files.length > 4) { alert("সর্বোচ্চ ৪টা"); return; }
-    const out: string[] = [];
-    for (const f of files) {
-      out.push(await new Promise<string>((resolve) => {
-        const rd = new FileReader(); rd.onload = () => {
-          const img = new Image(); img.onload = () => {
-            const c = document.createElement("canvas");
-            let w: number = img.width, h: number = img.height; const M = 800;
-            if (w > M) { h = (h * M) / w; w = M; }
-            c.width = w; c.height = h; c.getContext("2d")?.drawImage(img, 0, 0, w, h);
-            resolve(c.toDataURL("image/jpeg", 0.75));
-          }; img.src = String(rd.result);
-        }; rd.readAsDataURL(f);
-      }));
+
+  async function load() {
+    let data: any = await get("products");
+    if (!data) data = await get("admin_products");
+    if (!data) data = await get("pending");
+    if (!data) {
+      try { const l = localStorage.getItem("products"); if (l) data = JSON.parse(l); } catch {}
     }
-    setFImgs([...fImgs, ...out]); e.target.value = "";
-  };
-  const disc = mMrp && mSale ? Math.round((1 - Number(mSale) / Number(mMrp)) * 100) : 0;
-  const saveEdit = async () => {
-    if (!editId) return;
-    if (fImgs.length === 0) { alert("কমপক্ষে ১টা ছবি রাখতে হবে"); return; }
-    const mk = (list: any[]) => list.map((x) => x.id === editId ? { ...x, shop: fShop, shopName: fShopName, phone: fPhone, price: fPrice, oldPrice: mSale, name: mTitle, mTitle, mSale, mMrp, mDiscount: disc, mColors: mColors.split(",").map((s: string) => s.trim()).filter(Boolean), mSizes: mSizes.split(",").map((s: string) => s.trim()).filter(Boolean), mStock, mBadge, mFreeDel, mDelCharge, mDesc, mOffer, images: fImgs, img: fImgs[0] || "", adminEditedAt: new Date().toLocaleString("bn-BD") } : x);
-    if (editFrom === "pending") { const n = mk(pending); await setK("admin_pending", n); setPending(n); }
-    if (editFrom === "approved") { const n = mk(approved); await setK("admin_approved", n); setApproved(n); }
-    if (editFrom === "live") { const n = mk(live); await setK("admin_products", n); setLive(n); const na = mk(approved); await setK("admin_approved", na); setApproved(na); }
-    setEditId(null); alert("✅ Edit সেভ হয়েছে");
-  };
-  // ✅ নতুন - লিস্ট থেকেই যেকোনো ছবি ডিলিট
-  const deleteImageFromList = async (productId: any, imgIndex: number, from: string) => {
-    if (!confirm("এই ছবিটা ডিলিট করবেন?")) return;
-    const fix = (list: any[]) => list.map((x) => {
-      if (x.id !== productId) return x;
-      const imgs = (x.images || [x.img]).filter((_: any, i: number) => i !== imgIndex);
-      return { ...x, images: imgs, img: imgs[0] || "" };
+    if (Array.isArray(data)) setProducts(data);
+    else if (data && Array.isArray(data.products)) setProducts(data.products);
+    else if (data && Array.isArray(data.pending)) setProducts(data.pending);
+  }
+
+  async function save(next: any[]) {
+    setProducts(next);
+    await set("products", next);
+    try { localStorage.setItem("products", JSON.stringify(next)); } catch {}
+  }
+
+  async function deleteProduct(id: any) {
+    if (!confirm("এই প্রোডাক্টটা ডিলিট করবেন?")) return;
+    const next = products.filter((x: any) => x.id !== id);
+    await save(next);
+    alert("ডিলিট হয়ে গেছে ✅");
+  }
+
+  function deleteImageFromList(pId: any, i: number, from: string) {
+    if (from === "edit") {
+      const next = images.filter((_, idx) => idx !== i);
+      setImages(next);
+      return;
+    }
+    const next = products.map((p: any) => {
+      if (p.id === pId) {
+        const imgs = (p.images || [p.img]).filter(Boolean).filter((_: any, idx: number) => idx !== i);
+        return { ...p, images: imgs, img: imgs[0] || "" };
+      }
+      return p;
     });
-    if (from === "pending") { const n = fix(pending); await setK("admin_pending", n); setPending(n); }
-    if (from === "approved") { const n = fix(approved); await setK("admin_approved", n); setApproved(n); }
-    if (from === "live") { const n = fix(live); await setK("admin_products", n); setLive(n); const na = fix(approved); await setK("admin_approved", na); setApproved(na); }
-    alert("🗑️ ছবি ডিলিট হয়েছে");
-  };
-  // ✅ নতুন - পুরা পণ্য ডিলিট
-  const deleteProduct = async (productId: any, from: string) => {
-    if (!confirm("পুরা পণ্যটা ডিলিট করবেন? এইটা ফেরত আসবে না।")) return;
-    if (from === "pending") { const n = pending.filter((x) => x.id !== productId); await setK("admin_pending", n); setPending(n); }
-    if (from === "approved") { const n = approved.filter((x) => x.id !== productId); await setK("admin_approved", n); setApproved(n); }
-    if (from === "live") { const n = live.filter((x) => x.id !== productId); await setK("admin_products", n); setLive(n); }
-    alert("🗑️ পণ্য ডিলিট হয়েছে");
-  };
-  const doApprove = async (p: any) => {
-    const nP = pending.filter((x) => x.id !== p.id); await setK("admin_pending", nP); setPending(nP);
-    const item = { ...p, approvedAt: new Date().toLocaleString("bn-BD") };
-    const nA = approved.some((x) => x.id === p.id) ? approved.map((x) => x.id === p.id ? item : x) : [...approved, item];
-    await setK("admin_approved", nA); setApproved(nA);
-    alert("Approve হয়েছে");
-  };
-  const doSendCustomer = async (p: any) => {
-    const item = { ...p, sentToCustomerAt: new Date().toLocaleString("bn-BD") };
-    const nL = live.some((x) => x.id === p.id) ? live.map((x) => x.id === p.id ? item : x) : [...live, item];
-    await setK("admin_products", nL); setLive(nL);
-    alert("Customer-এ পাঠানো হয়েছে");
-  };
-  const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 6, outline: "none", boxSizing: "border-box" };
-  const label: any = { fontSize: 13, fontWeight: 800, margin: "10px 0 4px" };
-  const renderImgsWithDelete = (p: any, from: string) => (
-    <div style={{ display: "flex", overflowX: "auto", gap: 4 }}>
-      {(p.images || [p.img]).filter(Boolean).map((im: any, i: number) => (
-        <div key={i} style={{ position: "relative", flexShrink: 0 }}>
-          <img src={im} style={{ width: 150, height: 150, objectFit: "cover", borderRadius: 8 }} />
-          <button onClick={() => deleteImageFromList(p.id, i, from)} title="এই ছবি ডিলিট" style={{ position: "absolute", top: 4, right: 4, background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, padding: "6px 8px", fontWeight: 900, cursor: "pointer" }}>🗑️ {i + 1}</button>
-        </div>
-      ))}
-    </div>
-  );
+    save(next);
+  }
+
+  function startEdit(p: any) {
+    setEditId(p.id);
+    setTitle(p.title || "");
+    setPrice(String(p.price || ""));
+    setOldPrice(String(p.oldPrice || p.old_price || ""));
+    setColors(Array.isArray(p.colors) ? p.colors.join(", ") : (p.colors || ""));
+    setSizes(Array.isArray(p.sizes) ? p.sizes.join(", ") : (p.sizes || ""));
+    setStock(String(p.stock ?? ""));
+    setFreeDel(!!p.freeDel);
+    setDesc(p.desc || "");
+    setOffer(p.offer || "");
+    setImages(p.images || (p.img ? [p.img] : []));
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function saveEdit() {
+    if (!title) { alert("টাইটেল দেন"); return; }
+    const next = products.map((p: any) => p.id === editId ? {
+      ...p,
+      title, price: Number(price) || 0, oldPrice: Number(oldPrice) || 0,
+      colors: colors.split(",").map((s: string) => s.trim()).filter(Boolean),
+      sizes: sizes.split(",").map((s: string) => s.trim()).filter(Boolean),
+      stock: Number(stock) || 0, freeDel, desc, offer,
+      images, img: images[0] || p.img || ""
+    } : p);
+    await save(next);
+    setEditId(null);
+    alert("সেভ হয়ে গেছে ✅");
+  }
+
+  function onFile(e: any) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => { if (rd.result) setImages([...images, String(rd.result)]); };
+    rd.readAsDataURL(f);
+  }
+
+  const pending = products.filter((p: any) => p.status === "pending" || !p.approved);
+  const approved = products.filter((p: any) => p.status === "approved" || p.approved);
+  const shown = filter === "pending" ? pending : filter === "approved" ? approved : products;
+
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}>
       <div style={{ background: "#111", color: "#fff", padding: 16, borderRadius: 12 }}>
         <h2 style={{ margin: 0 }}>Admin Panel v1000 - Gawsia</h2>
-        <div style={{ fontSize: 13, opacity: 0.8 }}>Seller - Pending - Edit (মার্কেটিং) - Approve - Customer - ছবি ডিলিট</div>
+        <div style={{ fontSize: 13, opacity: 0.8 }}>Seller - Pending - Edit (ছবি ডিলিট) - Approve - Customer - ছবি ডিলিট সহ</div>
+        <div style={{ marginTop: 8, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button onClick={() => setFilter("all")} style={{ padding: "6px 12px", borderRadius: 8 }}>All - {products.length} টি</button>
+          <button onClick={() => setFilter("pending")} style={{ padding: "6px 12px", borderRadius: 8 }}>Pending - {pending.length} টি</button>
+          <button onClick={() => setFilter("approved")} style={{ padding: "6px 12px", borderRadius: 8 }}>Approved - {approved.length} টি</button>
+        </div>
       </div>
+
       {editId && (
-        <div style={{ background: "#FFFBEB", border: "2px solid #FACC15", padding: 16, borderRadius: 12, marginTop: 12 }}>
-          <h3>✏️ Admin Edit - Customer যেভাবে দেখবে সেভাবে সাজান</h3>
-          <div style={{ background: "#fff", padding: 12, borderRadius: 10, border: "1px solid #FDE68A" }}>
-            <div style={{ fontWeight: 900, color: "#DC2626" }}>🛍️ CUSTOMER দেখবে - মার্কেটিং</div>
-            <div style={label}>পণ্যের সুন্দর নাম</div><input value={mTitle} onChange={(e) => setMTitle(e.target.value)} placeholder="প্রিমিয়াম জামদানি শাড়ি - লাল" style={inp} />
-            <div style={{ display: "flex", gap: 8 }}><div style={{ flex: 1 }}><div style={label}>বিক্রয় মূল্য</div><input value={mSale} onChange={(e) => setMSale(e.target.value)} placeholder="900" style={inp} /></div><div style={{ flex: 1 }}><div style={label}>আগের মূল্য</div><input value={mMrp} onChange={(e) => setMMrp(e.target.value)} placeholder="1500" style={inp} /></div></div>
-            {disc > 0 && <div style={{ background: "#FEE2E2", color: "#DC2626", padding: "8px 12px", borderRadius: 8, fontWeight: 800 }}>🔥 Customer দেখবে: {disc}% ছাড়!</div>}
-            <div style={label}>কালার (কমা দিয়ে)</div><input value={mColors} onChange={(e) => setMColors(e.target.value)} placeholder="লাল, কালো, নীল" style={inp} />
-            <div style={label}>সাইজ / লম্বা</div><input value={mSizes} onChange={(e) => setMSizes(e.target.value)} placeholder="১২ হাত, ব্লাউজ পিস সহ" style={inp} />
-            <div style={{ display: "flex", gap: 8 }}><div style={{ flex: 1 }}><div style={label}>স্টক</div><input value={mStock} onChange={(e) => setMStock(e.target.value)} placeholder="10" style={inp} /></div><div style={{ flex: 1 }}><div style={label}>ব্যাজ</div><select value={mBadge} onChange={(e) => setMBadge(e.target.value)} style={inp}><option>🔥 Best Seller</option><option>✨ New Arrival</option><option>⏰ Limited Stock</option><option>💎 Premium</option><option>🎁 অফার</option><option></option></select></div></div>
-            <div style={label}>ডেলিভারি</div><label><input type="checkbox" checked={mFreeDel} onChange={(e) => setMFreeDel(e.target.checked)} /> 🚚 ফ্রি ডেলিভারি</label>
-            {!mFreeDel && <input value={mDelCharge} onChange={(e) => setMDelCharge(e.target.value)} placeholder="ডেলিভারি চার্জ - 60" style={{ ...inp, marginTop: 6 }} />}
-            <div style={label}>মার্কেটিং বর্ণনা</div><textarea value={mDesc} onChange={(e) => setMDesc(e.target.value)} placeholder="সুতি জামদানি, নরম আর আরামদায়ক..." style={{ ...inp, height: 60 }} />
-            <div style={label}>অফার লাইন</div><input value={mOffer} onChange={(e) => setMOffer(e.target.value)} placeholder="ক্যাশ অন ডেলিভারি" style={inp} />
-          </div>
-          <div style={{ background: "#F3F4F6", padding: 12, borderRadius: 10, marginTop: 10 }}>
-            <div style={{ fontWeight: 900, color: "#666" }}>🔒 শুধু ADMIN দেখবে - Customer দেখবে না</div>
-            <div style={label}>পাইকারি মূল্য</div><input value={fPrice} onChange={(e) => setFPrice(e.target.value)} placeholder="700" style={inp} />
-            <input value={fShop} onChange={(e) => setFShop(e.target.value)} placeholder="SHOP-01" style={inp} />
-            <input value={fShopName} onChange={(e) => setFShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
-            <input value={fPhone} onChange={(e) => setFPhone(e.target.value)} placeholder="মোবাইল" style={inp} />
-          </div>
-          <div style={label}>ছবি (৪টা) - যেকোনো ছবির নিচে 🗑️ চাপ দিলে ডিলিট হবে</div>
-          <input type="file" accept="image/*" multiple onChange={onFiles} style={{ ...inp, padding: 8 }} />
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            {fImgs.map((im: any, i: number) => (
-              <div key={i} style={{ border: "1px solid #ddd", padding: 6, borderRadius: 10, background: "#fff", textAlign: "center" }}>
-                <img src={im} style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 8 }} />
-                <div style={{ fontSize: 12, margin: "4px 0" }}>ছবি {i + 1}</div>
-                <button onClick={() => setFImgs(fImgs.filter((_: any, x: number) => x !== i))} style={{ background: "#DC2626", color: "#fff", border: "none", padding: "6px 10px", borderRadius: 8, fontWeight: 800, width: "100%" }}>🗑️ ডিলিট</button>
+        <div style={{ background: "#FFF7ED", border: "2px solid #FACC15", padding: 16, borderRadius: 12, marginTop: 12 }}>
+          <h3>Admin Edit - Customer দেখবে যেভাবে (ছবি ডিলিট সহ)</h3>
+          <div style={{ background: "#fff", padding: 12, borderRadius: 10, border: "1px solid #FDBA74" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: 1 }}><label>টাইটেল</label><br /><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="টাইটেল" style={{ width: "100%", padding: 8 }} /></div>
+                <div><label>দাম</label><br /><input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="দাম" style={{ padding: 8, width: 120 }} /></div>
+                <div><label>পুরনো দাম</label><br /><input value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="পুরনো দাম" style={{ padding: 8, width: 120 }} /></div>
               </div>
-            ))}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: 1 }}><label>কালার (কমা দিয়ে)</label><br /><input value={colors} onChange={(e) => setColors(e.target.value)} placeholder="লাল, নীল" style={{ width: "100%", padding: 8 }} /></div>
+                <div style={{ flex: 1 }}><label>সাইজ</label><br /><input value={sizes} onChange={(e) => setSizes(e.target.value)} placeholder="S, M, L" style={{ width: "100%", padding: 8 }} /></div>
+                <div><label>স্টক</label><br /><input value={stock} onChange={(e) => setStock(e.target.value)} placeholder="স্টক" style={{ padding: 8, width: 100 }} /></div>
+              </div>
+              <label><input type="checkbox" checked={freeDel} onChange={(e) => setFreeDel(e.target.checked)} /> ফ্রি ডেলিভারি</label>
+              <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="বিবরণ" rows={3} style={{ padding: 8 }} />
+              <input value={offer} onChange={(e) => setOffer(e.target.value)} placeholder="অফার লিখুন" style={{ padding: 8 }} />
+              <div>
+                <b>ছবি ({images.length} টি) - ছবির উপরে ❌ চাপ দিলে ডিলিট হবে</b>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                  {images.map((im: string, i: number) => (
+                    <div key={i} style={{ position: "relative", flexShrink: 0 }}>
+                      <img src={im} style={{ width: 150, height: 150, objectFit: "cover", borderRadius: 8 }} />
+                      <button onClick={() => deleteImageFromList(editId, i, "edit")} title="ছবি ডিলিট" style={{ position: "absolute", top: 4, right: 4, background: "#DC2626", color: "#fff", border: "none", borderRadius: "50%", width: 28, height: 28, cursor: "pointer" }}>❌</button>
+                      <div style={{ position: "absolute", bottom: 4, left: 4, background: "#000", color: "#fff", fontSize: 11, padding: "2px 6px", borderRadius: 6 }}>ছবি {i + 1}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  <input value={imgUrl} onChange={(e) => setImgUrl(e.target.value)} placeholder="ছবির লিংক পেস্ট করেন" style={{ flex: 1, padding: 8, minWidth: 200 }} />
+                  <button onClick={() => { if (imgUrl) { setImages([...images, imgUrl]); setImgUrl(""); } }} style={{ padding: "8px 14px", background: "#2563EB", color: "#fff", border: "none", borderRadius: 8 }}>+ লিংক যোগ</button>
+                  <label style={{ padding: "8px 14px", background: "#16A34A", color: "#fff", borderRadius: 8, cursor: "pointer" }}>+ ফাইল থেকে <input type="file" accept="image/*" onChange={onFile} style={{ display: "none" }} /></label>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={saveEdit} style={{ background: "#16A34A", color: "#fff", padding: "10px 18px", border: "none", borderRadius: 8, cursor: "pointer" }}>Edit সেভ ✅</button>
+                <button onClick={() => setEditId(null)} style={{ padding: "10px 18px", borderRadius: 8 }}>বাতিল</button>
+              </div>
+            </div>
           </div>
-          <div style={{ fontSize: 12, marginTop: 6 }}>ছবি: {fImgs.length} / ৪ টা - কমপক্ষে ১টা রাখতে হবে</div>
-          <button onClick={saveEdit} style={{ width: "100%", background: "#16A34A", color: "#fff", padding: 12, border: "none", borderRadius: 10, fontWeight: 800, marginTop: 10 }}>✅ Edit সেভ করুন</button>
-          <button onClick={() => setEditId(null)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #ddd", background: "#fff" }}>বাতিল</button>
         </div>
       )}
-      <h3>Pending - {pending.length} টি</h3>
-      {pending.map((p: any) => (
-        <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
-          {renderImgsWithDelete(p, "pending")}
-          <div style={{ padding: 12 }}><b>{p.mTitle || p.name}</b> - Customer দাম {p.mSale || p.oldPrice}৳ {p.mDiscount ? `(-${p.mDiscount}%)` : ""}<br />
-            <button onClick={() => startEdit(p, "pending")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
-            <button onClick={() => doApprove(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8 }}>Approve</button>
-            <button onClick={() => deleteProduct(p.id, "pending")} style={{ background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", padding: 10, borderRadius: 8, fontWeight: 800 }}>🗑️ পণ্য ডিলিট</button>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 12 }}>
+        {shown.length === 0 && <div style={{ padding: 20, textAlign: "center", background: "#fff", borderRadius: 12 }}>কোনো প্রোডাক্ট নাই</div>}
+        {shown.map((p: any) => (
+          <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", padding: 12, borderRadius: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {(p.images || [p.img]).filter(Boolean).map((im: string, i: number) => (
+                <div key={i} style={{ position: "relative" }}>
+                  <img src={im} style={{ width: 90, height: 90, objectFit: "cover", borderRadius: 8 }} />
+                  <button onClick={() => deleteImageFromList(p.id, i, "list")} title="এই ছবি ডিলিট" style={{ position: "absolute", top: 2, right: 2, background: "#DC2626", color: "#fff", border: "none", borderRadius: 6, fontSize: 11, padding: "2px 6px", cursor: "pointer" }}>🗑️ {i + 1}</button>
+                </div>
+              ))}
+            </div>
+            <div style={{ flex: 1, minWidth: 220 }}>
+              <b>{p.title}</b>
+              <div>৳{p.price} {p.oldPrice ? <s style={{ opacity: 0.5 }}>৳{p.oldPrice}</s> : ""} {p.offer ? `- ${p.offer}` : ""}</div>
+              <div style={{ fontSize: 12, opacity: 0.7 }}>{p.status || (p.approved ? "approved" : "pending")} | স্টক: {p.stock ?? "-"} {p.freeDel ? "| ফ্রি ডেলিভারি" : ""}</div>
+            </div>
+            <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "wrap" }}>
+              <button onClick={() => startEdit(p)} style={{ background: "#F59E0B", color: "#fff", padding: "8px 12px", border: "none", borderRadius: 8, cursor: "pointer" }}>Edit</button>
+              <button onClick={() => save(products.map((x: any) => x.id === p.id ? { ...x, status: "approved", approved: true } : x))} style={{ background: "#16A34A", color: "#fff", padding: "8px 12px", border: "none", borderRadius: 8, cursor: "pointer" }}>Approve</button>
+              <button onClick={() => deleteProduct(p.id)} style={{ background: "#DC2626", color: "#fff", padding: "8px 12px", border: "none", borderRadius: 8, cursor: "pointer" }}>🗑️ ডিলিট</button>
+            </div>
           </div>
-        </div>
-      ))}
-      <h3>Approved - {approved.length} টি</h3>
-      {approved.map((p: any) => (
-        <div key={p.id} style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
-          {renderImgsWithDelete(p, "approved")}
-          <div style={{ padding: 12 }}><b>{p.mTitle || p.name}</b> - {p.mSale || p.oldPrice}৳ {p.mDiscount ? `(-${p.mDiscount}%)` : ""} • {p.mBadge}<br />
-            <button onClick={() => startEdit(p, "approved")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
-            <button onClick={() => doSendCustomer(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8 }}>Customer-এ পাঠান</button>
-            <button onClick={() => deleteProduct(p.id, "approved")} style={{ background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", padding: 10, borderRadius: 8, fontWeight: 800 }}>🗑️ পণ্য ডিলিট</button>
-          </div>
-        </div>
-      ))}
-      <h3>Customer-এ লাইভ - {live.length} টি</h3>
-      {live.map((p: any) => (
-        <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
-          {renderImgsWithDelete(p, "live")}
-          <div style={{ padding: 12 }}><b>{p.mTitle || p.name}</b> - {p.mSale || p.oldPrice}৳<br />
-            <button onClick={() => startEdit(p, "live")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
-            <button onClick={() => doSendCustomer(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8 }}>আবার Customer-এ পাঠান</button>
-            <button onClick={() => deleteProduct(p.id, "live")} style={{ background: "#FEE2E2", color: "#DC2626", border: "1px solid #FECACA", padding: 10, borderRadius: 8, fontWeight: 800 }}>🗑️ পণ্য ডিলিট</button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
