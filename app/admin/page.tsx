@@ -1,185 +1,167 @@
 "use client";
 import { useState, useEffect } from "react";
 
-const DB = "shopDB";
-function idb(): Promise<IDBDatabase> {
+function openDb(): Promise<any> {
   return new Promise((res, rej) => {
-    const r = indexedDB.open(DB, 1);
+    const r = indexedDB.open("shopDB", 1);
     r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("kv")) r.result.createObjectStore("kv"); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
   });
 }
-async function idbGet(key: string): Promise<any> {
-  const db = await idb();
+async function getK(k: string) {
+  const db = await openDb();
   return new Promise((res) => {
-    const tx = db.transaction("kv", "readonly"); const q = tx.objectStore("kv").get(key);
+    const q = db.transaction("kv", "readonly").objectStore("kv").get(k);
     q.onsuccess = () => res(q.result || null); q.onerror = () => res(null);
   });
 }
-async function idbSet(key: string, val: any) {
-  const db = await idb();
-  return new Promise<void>((res) => {
-    const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(val, key);
-    tx.oncomplete = () => res(); tx.onerror = () => res();
+async function setK(k: string, v: any) {
+  const db = await openDb();
+  return new Promise((res) => {
+    const tx = db.transaction("kv", "readwrite"); tx.objectStore("kv").put(v, k);
+    tx.oncomplete = () => res(true); tx.onerror = () => res(true);
   });
 }
 
 export default function AdminPage() {
   const [pending, setPending] = useState<any[]>([]);
-  const [approved, setApproved] = useState<any[]>([]); // ✅ Approve-এর পর এখানে থাকবে, Customer-এ যাবে না
-  const [live, setLive] = useState<any[]>([]); // Customer দেখে
-  const [edit, setEdit] = useState<any>(null);
-  const [editFrom, setEditFrom] = useState<"pending" | "approved" | "live">("pending");
-  const [eShop, setEShop] = useState(""); const [eShopName, setEShopName] = useState(""); const [ePhone, setEPhone] = useState("");
-  const [eName, setEName] = useState(""); const [ePrice, setEPrice] = useState(""); const [eOld, setEOld] = useState("");
-  const [eDesc, setEDesc] = useState(""); const [eRemark, setERemark] = useState(""); const [eImages, setEImages] = useState<string[]>([]);
+  const [approved, setApproved] = useState<any[]>([]);
+  const [live, setLive] = useState<any[]>([]);
+  const [editId, setEditId] = useState<any>(null);
+  const [editFrom, setEditFrom] = useState("pending");
+  const [fShop, setFShop] = useState(""); const [fShopName, setFShopName] = useState(""); const [fPhone, setFPhone] = useState("");
+  const [fName, setFName] = useState(""); const [fPrice, setFPrice] = useState(""); const [fOld, setFOld] = useState("");
+  const [fDesc, setFDesc] = useState(""); const [fRemark, setFRemark] = useState(""); const [fImgs, setFImgs] = useState<any[]>([]);
 
   const load = async () => {
-    let p = (await idbGet("admin_pending")) || [];
-    let a = (await idbGet("admin_approved")) || [];
-    let l = (await idbGet("admin_products")) || [];
-    // আগের Live Sari-টা যাতে হারায় না - ওইটা Approved-এও কপি রাখা
-    if (l.length > 0 && a.length === 0) { a = l.map((x: any) => ({ ...x, approvedAt: new Date().toLocaleString("bn-BD") })); await idbSet("admin_approved", a); }
+    const p: any = (await getK("admin_pending")) || [];
+    let a: any = (await getK("admin_approved")) || [];
+    const l: any = (await getK("admin_products")) || [];
+    if (l.length > 0 && a.length === 0) { a = l; await setK("admin_approved", a); }
     setPending(p); setApproved(a); setLive(l);
   };
   useEffect(() => { load(); }, []);
 
-  const startEdit = (p: any, from: any) => {
-    setEdit(p); setEditFrom(from);
-    setEShop(p.shop || ""); setEShopName(p.shopName || ""); setEPhone(p.phone || "");
-    setEName(p.name); setEPrice(p.price); setEOld(p.oldPrice);
-    setEDesc(p.desc || ""); setERemark(p.remark || ""); setEImages(p.images || (p.img ? [p.img] : []));
+  const startEdit = (p: any, from: string) => {
+    setEditId(p.id); setEditFrom(from);
+    setFShop(p.shop || ""); setFShopName(p.shopName || ""); setFPhone(p.phone || "");
+    setFName(p.name); setFPrice(p.price); setFOld(p.oldPrice);
+    setFDesc(p.desc || ""); setFRemark(p.remark || ""); setFImgs(p.images || (p.img ? [p.img] : []));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleEditFiles = async (e: any) => {
-    const files: File[] = Array.from(e.target.files || []);
-    if (eImages.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি"); return; }
+  const onFiles = async (e: any) => {
+    const files: any[] = Array.from(e.target.files || []);
+    if (fImgs.length + files.length > 4) { alert("সর্বোচ্চ ৪টা"); return; }
     const out: string[] = [];
     for (const f of files) {
       out.push(await new Promise<string>((resolve) => {
         const rd = new FileReader(); rd.onload = () => {
           const img = new Image(); img.onload = () => {
             const c = document.createElement("canvas");
-            let w = img.width, h = img.height; const MAX = 800;
-            if (w > MAX) { h = (h * MAX) / w; w = MAX; }
+            let w: number = img.width, h: number = img.height; const M = 800;
+            if (w > M) { h = (h * M) / w; w = M; }
             c.width = w; c.height = h; c.getContext("2d")?.drawImage(img, 0, 0, w, h);
             resolve(c.toDataURL("image/jpeg", 0.75));
           }; img.src = String(rd.result);
         }; rd.readAsDataURL(f);
       }));
     }
-    setEImages([...eImages, ...out]); e.target.value = "";
+    setFImgs([...fImgs, ...out]); e.target.value = "";
   };
 
-  // ✅ Edit সেভ - যেই সেকশন থেকে Edit করছেন, ওইখানেই আপডেট + Admin-এ সংরক্ষিত থাকবে
   const saveEdit = async () => {
-    if (!edit) return;
-    const updated = { ...edit, shop: eShop, shopName: eShopName, phone: ePhone, name: eName, price: ePrice, oldPrice: eOld, desc: eDesc, remark: eRemark, images: eImages, img: eImages[0] || "", adminEditedAt: new Date().toLocaleString("bn-BD") };
-    if (editFrom === "pending") { const n = pending.map((p) => (p.id === edit.id ? updated : p)); await idbSet("admin_pending", n); setPending(n); }
-    if (editFrom === "approved") { const n = approved.map((p) => (p.id === edit.id ? updated : p)); await idbSet("admin_approved", n); setApproved(n); }
-    if (editFrom === "live") {
-      const n = live.map((p) => (p.id === edit.id ? updated : p)); await idbSet("admin_products", n); setLive(n);
-      const na = approved.map((p) => (p.id === edit.id ? updated : p)); await idbSet("admin_approved", na); setApproved(na);
-    }
-    setEdit(null); alert("✅ Edit সেভ হয়েছে - Admin-এ সংরক্ষিত থাকবে");
+    if (!editId) return;
+    const mk = (list: any[]) => list.map((x) => x.id === editId ? { ...x, shop: fShop, shopName: fShopName, phone: fPhone, name: fName, price: fPrice, oldPrice: fOld, desc: fDesc, remark: fRemark, images: fImgs, img: fImgs[0] || "", adminEditedAt: new Date().toLocaleString("bn-BD") } : x);
+    if (editFrom === "pending") { const n = mk(pending); await setK("admin_pending", n); setPending(n); }
+    if (editFrom === "approved") { const n = mk(approved); await setK("admin_approved", n); setApproved(n); }
+    if (editFrom === "live") { const n = mk(live); await setK("admin_products", n); setLive(n); const na = mk(approved); await setK("admin_approved", na); setApproved(na); }
+    setEditId(null); alert("Edit সেভ হয়েছে");
   };
 
-  // ১ম Approve - Pending -> Approved (Customer-এ যাবে না এখনো)
-  const approve = async (p: any) => {
-    await idbSet("admin_pending", pending.filter((x) => x.id !== p.id)); setPending(pending.filter((x) => x.id !== p.id));
+  const doApprove = async (p: any) => {
+    const nP = pending.filter((x) => x.id !== p.id); await setK("admin_pending", nP); setPending(nP);
     const item = { ...p, approvedAt: new Date().toLocaleString("bn-BD") };
-    const n = approved.some((x) => x.id === p.id) ? approved.map((x) => (x.id === p.id ? item : x)) : [...approved, item];
-    await idbSet("admin_approved", n); setApproved(n);
-    alert("✅ Approve হয়েছে! এখন Approved-এ আছে। Edit করে Customer-এ পাঠান।");
+    const nA = approved.some((x) => x.id === p.id) ? approved.map((x) => x.id === p.id ? item : x) : [...approved, item];
+    await setK("admin_approved", nA); setApproved(nA);
+    alert("Approve হয়েছে - এখন Approved-এ আছে, Customer-এ যায় নাই");
   };
 
-  // ২য় ধাপ - Approved -> Customer Live
-  const sendCustomer = async (p: any) => {
+  const doSendCustomer = async (p: any) => {
     const item = { ...p, sentToCustomerAt: new Date().toLocaleString("bn-BD") };
-    const n = live.some((x) => x.id === p.id) ? live.map((x) => (x.id === p.id ? item : x)) : [...live, item];
-    await idbSet("admin_products", n); setLive(n);
-    alert("✅ Customer-এ পাঠানো হয়ে গেছে! Customer এখন দেখবে। Admin-এ কপি রয়ে গেছে।");
+    const nL = live.some((x) => x.id === p.id) ? live.map((x) => x.id === p.id ? item : x) : [...live, item];
+    await setK("admin_products", nL); setLive(nL);
+    alert("Customer-এ পাঠানো হয়েছে");
   };
 
-  const backToPending = async (p: any) => {
-    await idbSet("admin_approved", approved.filter((x) => x.id !== p.id)); setApproved(approved.filter((x) => x.id !== p.id));
-    await idbSet("admin_pending", [...pending, p]); setPending([...pending, p]);
-  };
-  const rejectPending = async (id: number) => { if (!confirm("Reject করবো?")) return; await idbSet("admin_pending", pending.filter((x) => x.id !== id)); load(); };
-  const delApproved = async (id: number) => { if (!confirm("Approved থেকে মুছবো?")) return; await idbSet("admin_approved", approved.filter((x) => x.id !== id)); load(); };
-  const delLive = async (id: number) => { if (!confirm("Customer থেকে সরাবো? Approved-এ থাকবে")) return; await idbSet("admin_products", live.filter((x) => x.id !== id)); load(); };
-
-  const Card = ({ p, from }: any) => (
-    <div style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
-      <div style={{ display: "flex", overflowX: "auto" }}>{(p.images || [p.img]).filter(Boolean).map((im: string, i: number) => (<img key={i} src={im} style={{ width: 150, height: 150, objectFit: "cover" }} />))}</div>
-      <div style={{ padding: 12 }}>
-        <b style={{ fontSize: 18 }}>{p.name}</b> <span style={{ fontSize: 12, color: "#666" }}>• {p.shop} - {p.shopName} - {p.phone}</span><br />
-        <span>পাইকারি: {p.price}৳</span> <span style={{ color: "#666" }}>• খুচরা: {p.oldPrice}৳</span> <span>• {p.images?.length || 1} / ৪ টা ছবি</span><br />
-        <span style={{ fontSize: 13, color: "#555" }}>মন্তব্য: {p.desc} | Remark: {p.remark}</span><br />
-        {p.adminEditedAt && <span style={{ fontSize: 12, color: "green" }}>✏️ Admin Edit: {p.adminEditedAt}</span>}
-        {p.approvedAt && <span style={{ fontSize: 12, color: "#666" }}> • ✅ Approve: {p.approvedAt}</span>}
-        <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-          <button onClick={() => startEdit(p, from)} style={btnYellow}>✏️ Edit</button>
-          {from === "pending" && (<><button onClick={() => approve(p)} style={btnGreen}>✅ Approve</button><button onClick={() => rejectPending(p.id)} style={btnWhite}>🗑️ Reject</button></>)}
-          {from === "approved" && (<><button onClick={() => sendCustomer(p)} style={btnGreen}>📤 Customer-এ পাঠান</button><button onClick={() => backToPending(p)} style={btnWhite}>↩️ Pending-এ ফেরত</button><button onClick={() => delApproved(p.id)} style={btnWhite}>🗑️ মুছুন</button></>)}
-          {from === "live" && (<><button onClick={() => sendCustomer(p)} style={btnGreen}>🔄 আবার Customer-এ পাঠান</button><button onClick={() => delLive(p.id)} style={btnWhite}>Customer থেকে সরান</button></>)}
-        </div>
-      </div>
-    </div>
-  );
+  const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 6, outline: "none", boxSizing: "border-box" };
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}>
       <div style={{ background: "#111", color: "#fff", padding: 16, borderRadius: 12 }}>
-        <h2 style={{ margin: 0 }}>👑 Admin Panel - Gawsia</h2>
-        <div style={{ fontSize: 13, opacity: 0.8 }}>Seller → Pending → Edit → Approve → Customer</div>
+        <h2 style={{ margin: 0 }}>Admin Panel - Gawsia</h2>
+        <div style={{ fontSize: 13, opacity: 0.8 }}>Seller - Pending - Edit - Approve - Customer</div>
       </div>
 
-      {edit && (
+      {editId && (
         <div style={{ background: "#FFFBEB", border: "2px solid #FACC15", padding: 16, borderRadius: 12, marginTop: 12 }}>
-          <h3>✏️ Admin Edit করতেছেন - {edit.name} ({editFrom === "pending" ? "Pending" : editFrom === "approved" ? "Approved" : "Live"} থেকে)</h3>
-          <input value={eShop} onChange={(e) => setEShop(e.target.value)} placeholder="SHOP-01" style={inp} />
-          <input value={eShopName} onChange={(e) => setEShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
-          <input value={ePhone} onChange={(e) => setEPhone(e.target.value)} placeholder="মোবাইল" style={inp} />
-          <input value={eName} onChange={(e) => setEName(e.target.value)} placeholder="পণ্যের নাম" style={inp} />
-          <input value={ePrice} onChange={(e) => setEPrice(e.target.value)} placeholder="পাইকারি মূল্য - যেমন: 500" style={inp} />
-          <input value={eOld} onChange={(e) => setEOld(e.target.value)} placeholder="খুচরা মূল্য - যেমন: 800" style={inp} />
-          <input type="file" accept="image/*" multiple onChange={handleEditFiles} style={{ ...inp, padding: 8 }} />
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
-            {eImages.map((im, i) => (
+          <h3>Edit করতেছেন - {editFrom}</h3>
+          <input value={fShop} onChange={(e) => setFShop(e.target.value)} placeholder="SHOP-01" style={inp} />
+          <input value={fShopName} onChange={(e) => setFShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
+          <input value={fPhone} onChange={(e) => setFPhone(e.target.value)} placeholder="মোবাইল" style={inp} />
+          <input value={fName} onChange={(e) => setFName(e.target.value)} placeholder="পণ্যের নাম" style={inp} />
+          <input value={fPrice} onChange={(e) => setFPrice(e.target.value)} placeholder="পাইকারি মূল্য" style={inp} />
+          <input value={fOld} onChange={(e) => setFOld(e.target.value)} placeholder="খুচরা মূল্য" style={inp} />
+          <input type="file" accept="image/*" multiple onChange={onFiles} style={{ ...inp, padding: 8 }} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {fImgs.map((im: any, i: number) => (
               <div key={i} style={{ position: "relative" }}>
-                <img src={im} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: i === 0 ? "3px solid green" : "1px solid #ddd" }} />
-                <button onClick={() => setEImages(eImages.filter((_, x) => x !== i))} style={{ position: "absolute", top: -6, right: -6, background: "red", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20 }}>×</button>
-                {i === 0 && <div style={{ fontSize: 10, textAlign: "center", color: "green", fontWeight: 800 }}>MAIN</div>}
+                <img src={im} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8 }} />
+                <button onClick={() => setFImgs(fImgs.filter((_: any, x: number) => x !== i))} style={{ position: "absolute", top: -6, right: -6, background: "red", color: "#fff", border: "none", borderRadius: "50%", width: 20, height: 20 }}>x</button>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: 12 }}>ছবি: {eImages.length} / ৪ টা - প্রথম ছবিটা MAIN</div>
-          <textarea value={eDesc} onChange={(e) => setEDesc(e.target.value)} placeholder="মন্তব্য" style={{ ...inp, height: 50 }} />
-          <textarea value={eRemark} onChange={(e) => setERemark(e.target.value)} placeholder="Remark" style={{ ...inp, height: 50 }} />
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={saveEdit} style={{ flex: 1, background: "#16A34A", color: "#fff", padding: 12, border: "none", borderRadius: 10, fontWeight: 800 }}>✅ Edit সেভ - সংরক্ষিত থাকবে</button>
-            <button onClick={() => setEdit(null)} style={{ padding: "12px 16px", borderRadius: 10, border: "1px solid #ddd", background: "#fff" }}>❌ বাতিল</button>
-          </div>
+          <div style={{ fontSize: 12, margin: "6px 0" }}>ছবি: {fImgs.length} / ৪ টা</div>
+          <textarea value={fDesc} onChange={(e) => setFDesc(e.target.value)} placeholder="মন্তব্য" style={{ ...inp, height: 50 }} />
+          <textarea value={fRemark} onChange={(e) => setFRemark(e.target.value)} placeholder="Remark" style={{ ...inp, height: 50 }} />
+          <button onClick={saveEdit} style={{ width: "100%", background: "#16A34A", color: "#fff", padding: 12, border: "none", borderRadius: 10, fontWeight: 800 }}>Edit সেভ করুন</button>
+          <button onClick={() => setEditId(null)} style={{ width: "100%", marginTop: 8, padding: 10, borderRadius: 10, border: "1px solid #ddd", background: "#fff" }}>বাতিল</button>
         </div>
       )}
 
-      <h3>📥 Pending ({pending.length}টি) - Seller থেকে নতুন আসা</h3>
-      {pending.length === 0 && <div style={{ background: "#FEF3C7", padding: 12, borderRadius: 10 }}>Pending খালি - Seller থেকে Send করলে এখানে আসবে</div>}
-      {pending.map((p) => (<Card key={p.id} p={p} from="pending" />))}
+      <h3>Pending - {pending.length} টি</h3>
+      {pending.length === 0 && <div style={{ background: "#FEF3C7", padding: 12, borderRadius: 10 }}>Pending খালি</div>}
+      {pending.map((p: any) => (
+        <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ display: "flex", overflowX: "auto" }}>{(p.images || [p.img]).filter(Boolean).map((im: any, i: number) => (<img key={i} src={im} style={{ width: 150, height: 150, objectFit: "cover" }} />))}</div>
+          <div style={{ padding: 12 }}><b>{p.name}</b> - পাইকারি {p.price}৳ - খুচরা {p.oldPrice}৳ - {p.images?.length || 1} টা ছবি<br />
+            <button onClick={() => startEdit(p, "pending")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
+            <button onClick={() => doApprove(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>Approve</button>
+          </div>
+        </div>
+      ))}
 
-      <h3>✅ Approved ({approved.length}টি) - Admin Edit + Approve হয়েছে, Customer-এ যায় নাই এখনো</h3>
-      {approved.length === 0 && <div style={{ background: "#E0F2FE", padding: 12, borderRadius: 10 }}>Approved খালি - Pending থেকে Approve করলে এখানে আসবে</div>}
-      {approved.map((p) => (<Card key={p.id} p={p} from="approved" />))}
+      <h3>Approved - {approved.length} টি - Edit করা যাবে, Customer-এ যায় নাই</h3>
+      {approved.map((p: any) => (
+        <div key={p.id} style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ display: "flex", overflowX: "auto" }}>{(p.images || [p.img]).filter(Boolean).map((im: any, i: number) => (<img key={i} src={im} style={{ width: 150, height: 150, objectFit: "cover" }} />))}</div>
+          <div style={{ padding: 12 }}><b>{p.name}</b> - পাইকারি {p.price}৳ - খুচরা {p.oldPrice}৳ - {p.images?.length || 1} টা ছবি<br />
+            <button onClick={() => startEdit(p, "approved")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
+            <button onClick={() => doSendCustomer(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>Customer-এ পাঠান</button>
+          </div>
+        </div>
+      ))}
 
-      <h3>🛍️ Customer-এ লাইভ ({live.length}টি) - Customer এগুলা দেখতেছে</h3>
-      {live.length === 0 && <div style={{ background: "#F0FDF4", padding: 12, borderRadius: 10 }}>Live খালি</div>}
-      {live.map((p) => (<Card key={p.id} p={p} from="live" />))}
+      <h3>Customer-এ লাইভ - {live.length} টি</h3>
+      {live.map((p: any) => (
+        <div key={p.id} style={{ background: "#fff", border: "1px solid #eee", borderRadius: 14, overflow: "hidden", marginBottom: 12 }}>
+          <div style={{ display: "flex", overflowX: "auto" }}>{(p.images || [p.img]).filter(Boolean).map((im: any, i: number) => (<img key={i} src={im} style={{ width: 120, height: 120, objectFit: "cover" }} />))}</div>
+          <div style={{ padding: 12 }}><b>{p.name}</b> - পাইকারি {p.price}৳ - খুচরা {p.oldPrice}৳<br />
+            <button onClick={() => startEdit(p, "live")} style={{ background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800, marginRight: 8, marginTop: 8 }}>Edit</button>
+            <button onClick={() => doSendCustomer(p)} style={{ background: "#16A34A", color: "#fff", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>আবার Customer-এ পাঠান</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
-const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 6, outline: "none", boxSizing: "border-box" };
-const btnGreen: any = { flex: 1, background: "#16A34A", color: "#fff", border: "none", padding: 11, borderRadius: 8, fontWeight: 800 };
-const btnYellow: any = { flex: 1, background: "#FACC15", border: "none", padding: 11, borderRadius: 8, fontWeight: 800 };
-const btnWhite: any = { padding: "11px 14px", background: "#fff", border: "1px solid #ddd", borderRadius: 8 };
