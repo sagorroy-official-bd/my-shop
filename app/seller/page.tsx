@@ -5,9 +5,9 @@ export default function SellerPage() {
   const [shop, setShop] = useState("SHOP-01");
   const [shopName, setShopName] = useState("Gawsia");
   const [phone, setPhone] = useState("1111111");
-  const [name, setName] = useState("Borka");
-  const [price, setPrice] = useState("500");
-  const [oldPrice, setOldPrice] = useState("900");
+  const [name, setName] = useState("");
+  const [price, setPrice] = useState("");
+  const [oldPrice, setOldPrice] = useState("");
   const [images, setImages] = useState<string[]>([]);
   const [desc, setDesc] = useState("");
   const [remark, setRemark] = useState("");
@@ -22,13 +22,10 @@ export default function SellerPage() {
   }, []);
 
   const saveDrafts = (list: any[]) => {
-    try {
-      localStorage.setItem("seller_drafts", JSON.stringify(list));
-      setProducts(list);
-    } catch { alert("ছবি অনেক বড়! ২টার বেশি ছবি দিবেন না"); }
+    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); }
+    catch { alert("ছবি অনেক বড়! ২টার বেশি ছবি দিবেন না"); }
   };
 
-  // ছবি অটো রিসাইজ - 700px
   const resizeOne = (file: File) => {
     return new Promise<string>((resolve) => {
       const reader = new FileReader();
@@ -50,7 +47,6 @@ export default function SellerPage() {
     });
   };
 
-  // একাধিক ছবি চুজ করা
   const handleFiles = async (e: any) => {
     const files: File[] = Array.from(e.target.files || []);
     if (files.length === 0) return;
@@ -59,41 +55,26 @@ export default function SellerPage() {
     const out: string[] = [];
     for (const f of files) { out.push(await resizeOne(f)); }
     setImages([...images, ...out]);
-    e.target.value = ""; // একই ছবি আবার চুজ করা যাবে
+    e.target.value = "";
   };
 
   const addOrUpdate = () => {
-    if (!name || !price) { alert("নাম আর দাম লাগবে"); return; }
-    const item = {
-      id: editId || Date.now(),
-      shop, shopName, phone, name, price, oldPrice, desc, remark,
-      images: images, img: images[0] || "",
-    };
-    if (editId) {
-      saveDrafts(products.map((p) => (p.id === editId ? item : p)));
-      alert("✅ Edit সেভ হয়েছে");
-    } else {
-      saveDrafts([...products, item]);
-      alert("✅ Draft-এ যোগ হয়েছে");
-    }
-    setEditId(null); setImages([]); setDesc(""); setRemark("");
+    if (!name || !price) { alert("পণ্যের নাম আর পাইকারি মূল্য লাগবে"); return; }
+    const item = { id: editId || Date.now(), shop, shopName, phone, name, price, oldPrice, desc, remark, images, img: images[0] || "" };
+    if (editId) { saveDrafts(products.map((p) => (p.id === editId ? item : p))); alert("✅ Edit সেভ হয়েছে"); }
+    else { saveDrafts([...products, item]); alert("✅ Draft-এ যোগ হয়েছে"); }
+    setEditId(null); setImages([]); setName(""); setPrice(""); setOldPrice(""); setDesc(""); setRemark("");
   };
 
   const doEdit = (p: any) => {
-    setEditId(p.id);
-    setShop(p.shop); setShopName(p.shopName); setPhone(p.phone);
+    setEditId(p.id); setShop(p.shop); setShopName(p.shopName); setPhone(p.phone);
     setName(p.name); setPrice(p.price); setOldPrice(p.oldPrice);
-    setDesc(p.desc || ""); setRemark(p.remark || "");
-    setImages(p.images || (p.img ? [p.img] : []));
+    setDesc(p.desc || ""); setRemark(p.remark || ""); setImages(p.images || (p.img ? [p.img] : []));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const doDelete = (id: number) => {
-    if (!confirm("মুছে ফেলবো?")) return;
-    saveDrafts(products.filter((p) => p.id !== id));
-  };
+  const doDelete = (id: number) => { if (!confirm("মুছে ফেলবো?")) return; saveDrafts(products.filter((p) => p.id !== id)); };
 
-  // SEND ADMIN - পাঠানোর পর Seller থেকে মুছে যাবে
   const sendAdmin = () => {
     if (products.length === 0) { alert("আগে Draft-এ যোগ করেন"); return; }
     if (editId) { alert("আগে Edit সেভ করুন বা Edit বাতিল করুন"); return; }
@@ -101,14 +82,10 @@ export default function SellerPage() {
       const old = JSON.parse(localStorage.getItem("admin_pending") || "[]");
       const toSend = products.map((p) => ({ ...p, sentAt: new Date().toLocaleString("bn-BD") }));
       localStorage.setItem("admin_pending", JSON.stringify([...old, ...toSend]));
-      // Seller Draft খালি করা
       localStorage.setItem("seller_drafts", JSON.stringify([]));
-      setProducts([]);
-      setImages([]);
+      setProducts([]); setImages([]);
       alert("✅ " + toSend.length + " টা পণ্য Admin-এ চলে গেছে! Seller এখন খালি।");
-    } catch (err) {
-      alert("❌ জায়গা শেষ। ব্রাউজারে Ctrl+Shift+J চেপে localStorage.clear() লিখে Enter দেন, তারপর আবার চেষ্টা করেন");
-    }
+    } catch { alert("❌ জায়গা শেষ। Ctrl+Shift+J চেপে localStorage.clear() লিখে Enter দেন"); }
   };
 
   return (
@@ -116,13 +93,22 @@ export default function SellerPage() {
       <div style={{ background: "#fff", padding: 20, borderRadius: 16, border: "1px solid #eee" }}>
         <h3>{editId ? "✏️ Edit করতেছেন" : "🏪 দোকান + পণ্য"}</h3>
         <input value={shop} onChange={(e) => setShop(e.target.value)} placeholder="SHOP-01" style={inp} />
-        <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Gawsia" style={inp} />
-        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="মোবাইল" style={inp} />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Borka" style={inp} />
-        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="500" style={inp} />
-        <input value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="900" style={inp} />
+        <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="মোবাইল নাম্বার" style={inp} />
 
-        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত নিতে পারবেন</div>
+        {/* পণ্যের নাম - জলছাপ */}
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="পণ্যের নাম - যেমন: বোরকা / শাড়ি / থ্রি-পিস" style={inp} />
+        <div style={hint}>↑ এখানে পণ্যের নাম লিখবেন</div>
+
+        {/* পাইকারি মূল্য - 500 */}
+        <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="পাইকারি মূল্য - যেমন: 500" style={inp} />
+        <div style={hint}>↑ পাইকারি মূল্য</div>
+
+        {/* খুচরা মূল্য - 800 */}
+        <input value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="খুচরা মূল্য - যেমন: 800" style={inp} />
+        <div style={hint}>↑ খুচরা মূল্য</div>
+
+        <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6, marginTop: 10 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত</div>
         <input type="file" accept="image/*" multiple onChange={handleFiles} style={{ ...inp, padding: 8 }} />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
           {images.map((im, i) => (
@@ -133,10 +119,9 @@ export default function SellerPage() {
             </div>
           ))}
         </div>
-        {images.length === 0 && <div style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>এখনো ছবি নেওয়া হয় নাই</div>}
 
-        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="মন্তব্য" style={{ ...inp, height: 50 }} />
-        <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Remark" style={{ ...inp, height: 50 }} />
+        <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="মন্তব্য - যেমন: কাপড় ভালো, সাইজ..." style={{ ...inp, height: 50 }} />
+        <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="Remark - অ্যাডমিনের জন্য নোট" style={{ ...inp, height: 50 }} />
         <button onClick={addOrUpdate} style={{ width: "100%", background: editId ? "#FACC15" : "#111", color: editId ? "#111" : "#fff", padding: 13, borderRadius: 10, border: "none", fontWeight: 900 }}>
           {editId ? "✅ Edit সেভ করুন" : "+ Draft-এ যোগ করুন"}
         </button>
@@ -154,7 +139,8 @@ export default function SellerPage() {
               ))}
             </div>
             <div style={{ padding: 12 }}>
-              <b>{p.name} - {p.price}৳</b> <del>{p.oldPrice}৳</del> <span>• {p.images?.length || 1} টা ছবি</span>
+              <b>{p.name}</b><br />
+              <span style={{ fontSize: 13 }}>পাইকারি: {p.price}৳</span> <span style={{ fontSize: 13, color: "#666" }}>• খুচরা: {p.oldPrice}৳</span> <span style={{ fontSize: 12 }}>• {p.images?.length || 1} টা ছবি</span>
               <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
                 <button onClick={() => doEdit(p)} style={{ flex: 1, background: "#FACC15", border: "none", padding: 10, borderRadius: 8, fontWeight: 800 }}>✏️ Edit</button>
                 <button onClick={() => doDelete(p.id)} style={{ flex: 1, background: "#fff", border: "1px solid #ddd", padding: 10, borderRadius: 8 }}>🗑️ Delete</button>
@@ -168,4 +154,5 @@ export default function SellerPage() {
     </div>
   );
 }
-const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 10, outline: "none", boxSizing: "border-box" };
+const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 4, outline: "none", boxSizing: "border-box" };
+const hint: any = { fontSize: 12, color: "#888", marginBottom: 10, marginTop: -2 };
