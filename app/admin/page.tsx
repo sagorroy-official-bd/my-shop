@@ -41,20 +41,37 @@ export default function AdminPage() {
   useEffect(() => { load(); }, []);
 
   async function load() {
-    let data: any = await get("products");
-    if (!data) data = await get("admin_products");
-    if (!data) {
-      try { const l = localStorage.getItem("products"); if (l) data = JSON.parse(l); } catch {}
+    let all: any[] = [];
+    const keys = ["products", "admin_products", "pending", "approved_products", "approved", "seller_products", "sellerProducts"];
+    for (const k of keys) {
+      try {
+        const d: any = await get(k);
+        if (Array.isArray(d)) all = [...all, ...d];
+        else if (d && Array.isArray(d.products)) all = [...all, ...d.products];
+        else if (d && Array.isArray(d.pending)) all = [...all, ...d.pending];
+      } catch {}
     }
-    if (Array.isArray(data)) setProducts(data);
-    else if (data && Array.isArray(data.products)) setProducts(data.products);
+    try {
+      const l1 = localStorage.getItem("products"); if (l1) all = [...all, ...JSON.parse(l1)];
+      const l2 = localStorage.getItem("pending"); if (l2) all = [...all, ...JSON.parse(l2)];
+      const l3 = localStorage.getItem("approved_products"); if (l3) all = [...all, ...JSON.parse(l3)];
+    } catch {}
+    const seen = new Set(); const clean: any[] = [];
+    for (const p of all) {
+      if (!p || !p.id) continue;
+      if (seen.has(String(p.id))) continue;
+      seen.add(String(p.id));
+      if (!p.isCustom) { p.isOriginal = true; p.isCustom = false; }
+      clean.push(p);
+    }
+    if (clean.length > 0) setProducts(clean);
   }
 
-  // সব জায়গায় সেভ - কাস্টমার পেজ যেন পায়
   async function save(next: any[]) {
     setProducts(next);
     await set("products", next);
     await set("admin_products", next);
+    await set("pending", next.filter((x: any) => !x.isCustom));
     const approved = next.filter((x: any) => x.status === "approved" || x.approved);
     await set("approved_products", approved);
     await set("approved", approved);
@@ -65,11 +82,10 @@ export default function AdminPage() {
   }
 
   async function deleteProduct(id: any) {
-    if (!confirm("এই কপিটা ডিলিট করবেন? অরিজিনাল থাকবে।")) return;
+    if (!confirm("এই কপিটা ডিলিট করবেন?")) return;
     await save(products.filter((x: any) => x.id !== id));
   }
 
-  // ১ কপি অরিজিনাল থেকে ১ কপি কাস্টমাইজ কপি বানানো
   async function makeCustomCopy(p: any) {
     const copy = {
       ...p,
@@ -82,11 +98,10 @@ export default function AdminPage() {
       title: p.title,
     };
     await save([...products, copy]);
-    alert("কাস্টমাইজ কপি বানানো হয়ে গেছে ✅ এখন নিচে 'আমার কাস্টমাইজ কপি' তে Edit করেন");
+    alert("কাস্টমাইজ কপি বানানো হয়ে গেছে ✅ এখন নিচে ২ নম্বরে Edit করেন");
     window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
   }
 
-  // নীল বাটন - ঠিক করা
   function addLink() {
     const url = imgUrl.trim();
     if (!url) { alert("আগে 'ছবির লিংক পেস্ট করেন' বক্সে লিংক পেস্ট করেন"); return; }
@@ -110,7 +125,7 @@ export default function AdminPage() {
   }
 
   function startEdit(p: any) {
-    if (p.isOriginal) { alert("এইটা অরিজিনাল কপি - এটা এডিট করা যাবে না। নিচে 'কাস্টমাইজ কপি বানান' চাপ দেন, ওই কপিটা এডিট করেন"); return; }
+    if (p.isOriginal) { alert("এইটা অরিজিনাল কপি - এটা এডিট করা যাবে না। 'কাস্টমাইজ কপি বানান' চাপ দেন, ওই কপিটা এডিট করেন"); return; }
     setEditId(p.id);
     setTitle(p.title || "");
     setPrice(String(p.price || ""));
@@ -154,7 +169,7 @@ export default function AdminPage() {
     rd.readAsDataURL(f);
   }
 
-  const originals = products.filter((p: any) => p.isOriginal !== false && !p.isCustom);
+  const originals = products.filter((p: any) => p.isOriginal && !p.isCustom);
   const customs = products.filter((p: any) => p.isCustom);
   const approved = products.filter((p: any) => p.status === "approved" || p.approved);
 
@@ -188,7 +203,7 @@ export default function AdminPage() {
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto", padding: 16, fontFamily: "sans-serif" }}>
       <div style={{ background: "#111", color: "#fff", padding: 16, borderRadius: 12 }}>
-        <h2 style={{ margin: 0 }}>Admin Panel v1001 - Gawsia</h2>
+        <h2 style={{ margin: 0 }}>Admin Panel v1002 - Gawsia</h2>
         <div style={{ fontSize: 13, opacity: 0.8 }}>১. সেলার অরিজিনাল সংরক্ষণ → ২. কাস্টমাইজ কপি → ৩. Approve দিয়ে কাস্টমারে পাঠান</div>
         <div style={{ marginTop: 8, fontSize: 13 }}>অরিজিনাল: {originals.length} টি | কাস্টমাইজ: {customs.length} টি | কাস্টমারে গেছে: {approved.length} টি</div>
       </div>
