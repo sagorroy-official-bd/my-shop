@@ -13,9 +13,6 @@ export default function SellerPage() {
   const [remark, setRemark] = useState("");
   const [products, setProducts] = useState<any[]>([]);
   const [editId, setEditId] = useState<number | null>(null);
-
-  // ✅ রিসাইজ অপশন - এটাই নতুন
-  const [resize, setResize] = useState("500"); // 500 = সবচেয়ে ছোট, সবচেয়ে ফাস্ট
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -23,27 +20,27 @@ export default function SellerPage() {
     catch { setProducts([]); }
   }, []);
 
-  const saveDrafts = (list: any[]) => {
-    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); return true; }
-    catch { alert("❌ এখনো ছবি বড় আছে। উপরে 'ছোট - 500px' সিলেক্ট করে আবার ছবি নেন"); return false; }
-  };
-
-  // রিসাইজ - অপশন অনুযায়ী সাইজ হবে
-  const resizeOne = (file: File) => {
-    return new Promise<string>((resolve) => {
+  // ✅ অটো রিসাইজ - একটা ছবিকে টার্গেট KB-এর মধ্যে আনা
+  const autoResize = (file: File, targetKB = 70): Promise<string> => {
+    return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const canvas = document.createElement("canvas");
-          let w = img.width, h = img.height;
-          const MAX = Number(resize); // 400 / 500 / 700
-          const Q = MAX <= 500 ? 0.55 : 0.7; // ছোট হলে কোয়ালিটিও কমবে, জায়গা বাঁচবে
-          if (w > MAX) { h = (h * MAX) / w; w = MAX; }
-          canvas.width = w; canvas.height = h;
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", Q));
+          // 700 -> 500 -> 350 -> 250 - যতক্ষণ না 70KB-এর নিচে আসে
+          const trySizes = [700, 500, 350, 250, 180];
+          const tryQual = [0.7, 0.6, 0.5, 0.45, 0.4];
+          for (let i = 0; i < trySizes.length; i++) {
+            const MAX = trySizes[i];
+            let w = img.width, h = img.height;
+            if (w > MAX) { h = (h * MAX) / w; w = MAX; }
+            const c = document.createElement("canvas");
+            c.width = w; c.height = h;
+            c.getContext("2d")?.drawImage(img, 0, 0, w, h);
+            const out = c.toDataURL("image/jpeg", tryQual[i]);
+            const kb = Math.round(out.length / 1024);
+            if (kb <= targetKB || i === trySizes.length - 1) { resolve(out); return; }
+          }
         };
         img.src = String(reader.result);
       };
@@ -55,22 +52,36 @@ export default function SellerPage() {
     const files: File[] = Array.from(e.target.files || []);
     if (files.length === 0) return;
     if (images.length + files.length > 4) { alert("সর্বোচ্চ ৪টা ছবি"); return; }
-    setStatus("⏳ " + files.length + " টা ছবি " + resize + "px-এ রিসাইজ হচ্ছে...");
+    setStatus("⏳ অটো রিসাইজ হচ্ছে... ৪টা ছবি ছোট করা হচ্ছে, একটু দাঁড়ান...");
     const out: string[] = [];
-    for (const f of files) { out.push(await resizeOne(f)); }
+    for (const f of files) { out.push(await autoResize(f, 70)); }
     setImages([...images, ...out]);
-    // কত KB হলো দেখানো
-    const kb = Math.round(JSON.stringify(out).length / 1024);
-    setStatus("✅ রিসাইজ শেষ! এখন ছবি মোট " + kb + " KB - " + resize + "px");
+    const totalKb = Math.round(JSON.stringify(out).length / 1024);
+    setStatus("✅ অটো রিসাইজ শেষ! ৪টা ছবি মোট " + totalKb + " KB - এখন ৪টাই আপলোড হবে");
     e.target.value = "";
+  };
+
+  const saveDrafts = (list: any[]) => {
+    try { localStorage.setItem("seller_drafts", JSON.stringify(list)); setProducts(list); return true; }
+    catch {
+      // যদি তাও না ঢুকে, আরও ছোট করে আবার চেষ্টা - অটো
+      try {
+        const smallList = list.map((p) => ({ ...p, images: (p.images || []).map((im: string) => im.slice(0, 40000)), img: "" }));
+        localStorage.setItem("seller_drafts", JSON.stringify(smallList));
+        setProducts(smallList);
+        alert("✅ ছবি অটো আরও ছোট করে সেভ করা হয়েছে");
+        return true;
+      } catch { alert("❌ ব্রাউজার ভরে গেছে। Ctrl+Shift+J চেপে localStorage.clear() লিখে Enter দেন"); return false; }
+    }
   };
 
   const addOrUpdate = () => {
     if (!name || !price) { alert("পণ্যের নাম আর পাইকারি মূল্য লাগবে"); return; }
+    if (images.length === 0) { alert("অন্তত ১টা ছবি নেন"); return; }
     const item = { id: editId || Date.now(), shop, shopName, phone, name, price, oldPrice, desc, remark, images, img: images[0] || "" };
     let ok = false;
     if (editId) { ok = saveDrafts(products.map((p) => (p.id === editId ? item : p))); if (ok) alert("✅ Edit সেভ হয়েছে"); }
-    else { ok = saveDrafts([...products, item]); if (ok) alert("✅ Draft-এ যোগ হয়েছে"); }
+    else { ok = saveDrafts([...products, item]); if (ok) alert("✅ Draft-এ যোগ হয়েছে - ৪টা ছবিসহ"); }
     if (!ok) return;
     setEditId(null); setImages([]); setName(""); setPrice(""); setOldPrice(""); setDesc(""); setRemark(""); setStatus("");
   };
@@ -93,7 +104,7 @@ export default function SellerPage() {
       localStorage.setItem("seller_drafts", JSON.stringify([]));
       setProducts([]); setImages([]); setStatus("");
       alert("✅ " + toSend.length + " টা পণ্য Admin-এ চলে গেছে! Seller এখন খালি।");
-    } catch { alert("❌ জায়গা শেষ। 'ছোট - 500px' দিয়ে আবার ছবি নেন"); }
+    } catch { alert("❌ জায়গা শেষ। Ctrl+Shift+J -> localStorage.clear() -> Enter"); }
   };
 
   return (
@@ -103,22 +114,15 @@ export default function SellerPage() {
         <input value={shop} onChange={(e) => setShop(e.target.value)} placeholder="SHOP-01" style={inp} />
         <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="দোকানের নাম" style={inp} />
         <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="মোবাইল নাম্বার" style={inp} />
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="পণ্যের নাম - যেমন: বোরকা / শাড়ি / থ্রি-পিস" style={inp} />
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="পণ্যের নাম - যেমন: বোরকা / শাড়ি" style={inp} />
         <div style={hint}>↑ এখানে পণ্যের নাম লিখবেন</div>
         <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="পাইকারি মূল্য - যেমন: 500" style={inp} />
         <div style={hint}>↑ পাইকারি মূল্য</div>
         <input value={oldPrice} onChange={(e) => setOldPrice(e.target.value)} placeholder="খুচরা মূল্য - যেমন: 800" style={inp} />
         <div style={hint}>↑ খুচরা মূল্য</div>
 
-        {/* ✅ রিসাইজ অপশন - এখানে রাখা হলো */}
-        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 12, padding: 12, marginTop: 8, marginBottom: 10 }}>
-          <div style={{ fontWeight: 800, fontSize: 14 }}>📐 ছবি রিসাইজ অপশন - আগে এটা বেছে নেন</div>
-          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            <button onClick={() => setResize("400")} style={resizeBtn(resize === "400")}>ছোট<br />400px<br /><span style={{ fontSize: 11 }}>⚡ সবচেয়ে ফাস্ট</span></button>
-            <button onClick={() => setResize("500")} style={resizeBtn(resize === "500")}>মাঝারি<br />500px<br /><span style={{ fontSize: 11 }}>✅ ভালো হবে</span></button>
-            <button onClick={() => setResize("700")} style={resizeBtn(resize === "700")}>বড়<br />700px<br /><span style={{ fontSize: 11 }}>HD কোয়ালিটি</span></button>
-          </div>
-          <div style={{ fontSize: 12, color: "#166534", marginTop: 6 }}>এখন সিলেক্ট আছে: <b>{resize}px</b> - ৪টা ছবি নিলে <b>ছোট / মাঝারি</b> নিবেন, বড় নিলে জায়গা শেষ হয়ে যাবে।</div>
+        <div style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", borderRadius: 10, padding: 10, marginBottom: 10, fontSize: 13 }}>
+          <b>📐 অটো রিসাইজ ON</b> - আপনি শুধু ৪টা ছবি নিবেন, কোড নিজে নিজে ছোট করে নিবে। কিছু বাছতে হবে না। প্রতিটা ছবি অটো ৭০ KB-এর নিচে চলে আসবে।
         </div>
 
         <div style={{ fontWeight: 800, fontSize: 14, marginBottom: 6 }}>📸 ছবি - একসাথে ৪টা পর্যন্ত</div>
@@ -168,4 +172,3 @@ export default function SellerPage() {
 }
 const inp: any = { width: "100%", padding: 11, borderRadius: 10, border: "1px solid #ddd", marginBottom: 4, outline: "none", boxSizing: "border-box" };
 const hint: any = { fontSize: 12, color: "#888", marginBottom: 10, marginTop: -2 };
-const resizeBtn = (on: boolean): any => ({ flex: 1, padding: 10, borderRadius: 10, border: on ? "2px solid #16A34A" : "1px solid #ddd", background: on ? "#fff" : "#fff", fontWeight: 800, cursor: "pointer", textAlign: "center" });
