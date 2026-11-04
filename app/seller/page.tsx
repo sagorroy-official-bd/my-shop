@@ -2,158 +2,118 @@
 import { useState } from "react";
 
 export default function SellerPage() {
-  const [shop, setShop] = useState("SHOP-01");
-  const [name, setName] = useState("Gausia");
-  const [phone, setPhone] = useState("1111111");
+  const [shopCode, setShopCode] = useState("SHOP-01");
+  const [shopName, setShopName] = useState("Gausia");
+  const [owner, setOwner] = useState("");
   const [pName, setPName] = useState("");
   const [wholesale, setWholesale] = useState("");
   const [retail, setRetail] = useState("");
-  const [montobbo, setMontobbo] = useState("");
+  const [stock, setStock] = useState("");
   const [remark, setRemark] = useState("");
-  const [images, setImages] = useState<string[]>([]);
   const [drafts, setDrafts] = useState<any[]>([]);
-  const [editIndex, setEditIndex] = useState<number | null>(null);
 
-  const handleImage = (e: any) => {
-    const files = Array.from(e.target.files || []).slice(0, 6 - images.length);
-    setImages([...images, ...files.map((f: any) => URL.createObjectURL(f))]);
-    e.target.value = "";
-  };
-
-  const deleteFormImage = (idx: number) => {
-    setImages(images.filter((_, j) => j !== idx));
-  };
-
-  const deleteDraftImage = (draftIdx: number, imgIdx: number) => {
-    const copy = [...drafts];
-    copy[draftIdx].images = copy[draftIdx].images.filter((_: any, j: number) => j !== imgIdx);
-    setDrafts(copy);
-    if (editIndex === draftIdx) setImages(copy[draftIdx].images);
-  };
-
-  const clearForm = () => {
-    setPName(""); setWholesale(""); setRetail("");
-    setMontobbo(""); setRemark(""); setImages([]);
-    setEditIndex(null);
-  };
-
-  const addOrSave = () => {
-    if (!pName || !wholesale || !retail) { alert("পণ্যের নাম, পাইকারি মূল্য, খুচরা মূল্য লিখেন"); return; }
-    const data = { pName, wholesale, retail, montobbo, remark, images };
-    if (editIndex !== null) {
-      const copy = [...drafts]; copy[editIndex] = data; setDrafts(copy);
-    } else { setDrafts([...drafts, data]); }
-    clearForm();
-  };
-
-  const editDraft = (i: number) => {
-    const d = drafts[i];
-    setPName(d.pName); setWholesale(d.wholesale); setRetail(d.retail);
-    setMontobbo(d.montobbo || ""); setRemark(d.remark || ""); setImages([...(d.images || [])]);
-    setEditIndex(i);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  const deleteDraft = (i: number) => {
-    if (!confirm("ডিলিট করবেন?")) return;
-    setDrafts(drafts.filter((_, j) => j !== i));
-    if (editIndex === i) clearForm();
+  const addDraft = () => {
+    if (!pName) return alert("পণ্যের নাম দিন");
+    const newItem = {
+      id: Date.now(),
+      pName, wholesale, retail, stock, remark
+    };
+    setDrafts([newItem, ...drafts]);
+    setPName(""); setWholesale(""); setRetail(""); setStock(""); setRemark("");
+    alert("Draft-এ যোগ হয়েছে");
   };
 
   const sendAdmin = () => {
-    if (drafts.length === 0) { alert("আগে Draft-এ যোগ করেন"); return; }
-    const old = JSON.parse(localStorage.getItem("admin_orders") || "[]");
-    localStorage.setItem("admin_orders", JSON.stringify([...old, { shop, name, phone, items: drafts, time: new Date().toLocaleString() }]));
-    alert("Admin-এর কাছে পাঠানো হয়েছে");
+    if (drafts.length === 0) return alert("Draft খালি");
+    const all = JSON.parse(localStorage.getItem("gausia_all_products") || "[]");
+    const toSend = drafts.map((d: any) => ({
+      id: `${shopCode}-${String(all.length + 1).padStart(3, "0")}`,
+      title: d.pName,
+      wholesale: d.wholesale,
+      retail: d.retail,
+      stock: d.stock,
+      remark: d.remark,
+      shop: shopCode,
+      approveStatus: "pending",
+    }));
+    localStorage.setItem("gausia_all_products", JSON.stringify([...toSend, ...all]));
     setDrafts([]);
-    setPName(""); setWholesale(""); setRetail("");
-    setMontobbo(""); setRemark(""); setImages([]);
-    setShop(""); setName(""); setPhone("");
-    setEditIndex(null);
+    alert("Admin-এ পাঠানো হয়েছে");
   };
 
   return (
-    <div className="min-h-screen bg-[#f6f2ea] p-3 md:p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="bg-gradient-to-r from-black via-zinc-900 to-pink-700 text-white rounded-[20px] p-5 text-center">
-          <h1 className="font-black text-2xl md:text-3xl">GAUSIA COLLECTION</h1>
-          <p className="text-xs opacity-80 mt-1">Seller Page • my-shop-17lh.vercel.app/seller</p>
-        </div>
+    <div style={{ display: "flex", gap: "20px", padding: "20px", background: "#fdfbf7", minHeight: "100vh", flexWrap: "wrap" }}>
+      {/* বাম পাশ - ফর্ম */}
+      <div style={{ background: "white", border: "1px solid #ddd", borderRadius: "16px", padding: "16px", width: "100%", maxWidth: "420px" }}>
+        <h2 style={{ fontWeight: 800 }}>🛍️ দোকান + পণ্য</h2>
 
-        <div className="grid md:grid-cols-2 gap-4 mt-4">
-          <div className="bg-white rounded-[20px] border shadow-sm p-5">
-            <h2 className="font-bold">🛍️ দোকান + পণ্য</h2>
-            <input value={shop} onChange={(e)=>setShop(e.target.value)} placeholder="SHOP-01" className="w-full border rounded-xl px-4 py-3 mt-4 text-sm outline-none focus:border-pink-500" />
-            <input value={name} onChange={(e)=>setName(e.target.value)} placeholder="Gausia" className="w-full border rounded-xl px-4 py-3 mt-3 text-sm outline-none focus:border-pink-500" />
-            <input value={phone} onChange={(e)=>setPhone(e.target.value)} placeholder="মোবাইল" className="w-full border rounded-xl px-4 py-3 mt-3 text-sm outline-none focus:border-pink-500" />
+        <input value={shopCode} onChange={(e) => setShopCode(e.target.value)} placeholder="SHOP-01" style={inputStyle} />
+        <input value={shopName} onChange={(e) => setShopName(e.target.value)} placeholder="Gausia" style={inputStyle} />
+        <input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="মোবাইল" style={inputStyle} />
 
-            <label className="block text-sm font-bold mt-5">পণ্যের নাম - যেমন: বোরকা / শাড়ি / থ্রি-পিস</label>
-            <input value={pName} onChange={(e)=>setPName(e.target.value)} placeholder="এখানে পণ্যের নাম লিখবেন" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500" />
+        <label style={labelStyle}>পণ্যের নাম - যেমন: বোরকা / শাড়ি / থ্রি-পিস</label>
+        <input value={pName} onChange={(e) => setPName(e.target.value)} placeholder="এখানে পণ্যের নাম লিখুন" style={inputStyle} />
 
-            <label className="block text-sm font-bold mt-4">পাইকারি মূল্য</label>
-            <input value={wholesale} onChange={(e)=>setWholesale(e.target.value)} placeholder="500" type="number" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" />
+        <label style={labelStyle}>পাইকারি মূল্য</label>
+        <input value={wholesale} onChange={(e) => setWholesale(e.target.value)} type="number" placeholder="পাইকারি মূল্য: ৫০০" style={inputStyle} />
 
-            <label className="block text-sm font-bold mt-4">খুচরা মূল্য</label>
-            <input value={retail} onChange={(e)=>setRetail(e.target.value)} placeholder="800" type="number" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" />
+        <label style={labelStyle}>খুচরা মূল্য</label>
+        <input value={retail} onChange={(e) => setRetail(e.target.value)} type="number" placeholder="খুচরা মূল্য: ৮০০" style={inputStyle} />
 
-            <label className="block text-sm font-bold mt-4">📷 ছবি - একসাথে সর্বোচ্চ 6টা</label>
-            <input type="file" multiple accept="image/*" onChange={handleImage} className="w-full border rounded-xl px-4 py-3 mt-2 text-sm" />
-            <p className="text-xs text-gray-500 mt-1">ছবি {images.length} / 6 টা</p>
+        <label style={labelStyle}>📷 ছবি - একসাথে সর্বোচ্চ ৬টা</label>
+        <input type="file" multiple accept="image/*" style={inputStyle} />
+        <p style={{ fontSize: "11px", color: "#888" }}>ছবি 0 / 6 টা</p>
 
-            {images.length > 0 && (
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {images.map((img, j) => (
-                  <div key={j} className="relative">
-                    <img src={img} className="w-16 h-16 object-cover rounded-lg" />
-                    <button onClick={()=>deleteFormImage(j)} className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-[11px] font-bold leading-none">✕</button>
-                  </div>
-                ))}
-              </div>
-            )}
+        <label style={labelStyle}>মজুদ</label>
+        <textarea value={stock} onChange={(e) => setStock(e.target.value)} placeholder="মজুদ লিখুন" style={{ ...inputStyle, height: "60px" }} />
 
-            <label className="block text-sm font-bold mt-4">মন্তব্য</label>
-            <textarea value={montobbo} onChange={(e)=>setMontobbo(e.target.value)} placeholder="মন্তব্য লিখেন" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" rows={2} />
+        <label style={labelStyle}>রিমার্ক</label>
+        <textarea value={remark} onChange={(e) => setRemark(e.target.value)} placeholder="রিমার্ক লিখুন" style={{ ...inputStyle, height: "60px" }} />
 
-            <label className="block text-sm font-bold mt-4">রিমার্ক</label>
-            <textarea value={remark} onChange={(e)=>setRemark(e.target.value)} placeholder="Remark - অ্যাডমিনের জন্য নোট" className="w-full border rounded-xl px-4 py-3 mt-2 text-sm outline-none focus:border-pink-500 placeholder:text-amber-300 placeholder:font-bold" rows={2} />
-
-            <button onClick={addOrSave} className="w-full bg-black text-white rounded-full py-3 mt-4 font-bold text-sm">
-              {editIndex !== null ? "✅ Save / আপডেট করুন" : "+ Draft-এ যোগ করুন"}
-            </button>
-            {editIndex !== null && <button onClick={clearForm} className="w-full border rounded-full py-2 mt-2 text-sm">বাতিল</button>}
-          </div>
-
-          <div className="bg-white rounded-[20px] border shadow-sm p-5 h-fit">
-            <h2 className="font-bold">👁️ প্রিভিউ - Draft</h2>
-            {drafts.length === 0 ? (
-              <div className="bg-yellow-50 border border-yellow-100 rounded-xl p-3 mt-3 text-sm">Draft খালি</div>
-            ) : drafts.map((d, i) => (
-              <div key={i} className="border rounded-xl p-3 mt-3 text-sm">
-                <b>{d.pName}</b>
-                <p>পাইকারি: {d.wholesale} ৳ | খুচরা: {d.retail} ৳</p>
-                {d.montobbo && <p>মন্তব্য: {d.montobbo}</p>}
-                {d.remark && <p className="text-gray-600">রিমার্ক: {d.remark}</p>}
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {d.images.map((img: string, j: number) => (
-                    <div key={j} className="relative">
-                      <img src={img} className="w-16 h-16 object-cover rounded-lg" />
-                      {editIndex === i && (
-                        <button onClick={()=>deleteDraftImage(i, j)} className="absolute -top-2 -right-2 bg-red-500 text-white w-5 h-5 rounded-full text-[11px] font-bold leading-none">✕</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                {editIndex === i && <p className="text-[11px] text-red-500 mt-1">Edit চলতেছে - ছবির ✕ দিয়ে আলাদা ডিলিট করতে পারবেন</p>}
-                <div className="flex gap-2 mt-3">
-                  <button onClick={()=>editDraft(i)} className="flex-1 bg-yellow-400 rounded-lg py-1.5 font-bold text-xs">✏️ Edit</button>
-                  <button onClick={()=>deleteDraft(i)} className="flex-1 bg-red-500 text-white rounded-lg py-1.5 font-bold text-xs">🗑️ Delete</button>
-                </div>
-              </div>
-            ))}
-            <button onClick={sendAdmin} className="w-full bg-green-600 text-white rounded-xl py-3 mt-3 font-bold text-sm">📤 Send Admin - {drafts.length} টা পণ্য (এটা ছবিসহ যাবে)</button>
-          </div>
-        </div>
+        <button onClick={addDraft} style={{ width: "100%", background: "black", color: "white", padding: "12px", borderRadius: "20px", border: "none", fontWeight: 700, marginTop: "10px", cursor: "pointer" }}>
+          + Draft-এ যোগ করুন
+        </button>
       </div>
+
+      {/* ডান পাশ - প্রিভিউ */}
+      <div style={{ background: "white", border: "1px solid #ddd", borderRadius: "16px", padding: "16px", width: "100%", maxWidth: "420px", height: "fit-content" }}>
+        <h3>👁️ প্রিভিউ - Draft</h3>
+        <p>Draft খালি - {drafts.length} টা পণ্য</p>
+        {drafts.map((d: any) => (
+          <div key={d.id} style={{ border: "1px solid #eee", padding: "10px", borderRadius: "10px", marginTop: "8px" }}>
+            <b>{d.pName}</b>
+            <div>পাইকারি: {d.wholesale}৳ | খুচরা: {d.retail}৳</div>
+            <div>মজুদ: {d.stock} | রিমার্ক: {d.remark}</div>
+          </div>
+        ))}
+        <button onClick={sendAdmin} style={{ width: "100%", background: "green", color: "white", padding: "12px", borderRadius: "10px", border: "none", fontWeight: 700, marginTop: "12px", cursor: "pointer" }}>
+          📤 Send Admin - {drafts.length} টা পণ্য
+        </button>
+      </div>
+
+      <style>{`
+        input::placeholder, textarea::placeholder {
+          color: #bbbbbb;
+        }
+      `}</style>
     </div>
   );
 }
+
+const inputStyle: any = {
+  width: "100%",
+  border: "1px solid #ddd",
+  borderRadius: "12px",
+  padding: "10px 12px",
+  marginBottom: "10px",
+  fontSize: "14px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const labelStyle: any = {
+  fontSize: "13px",
+  fontWeight: 700,
+  display: "block",
+  marginBottom: "5px",
+};
